@@ -24,4 +24,4 @@ The script tries to load `~/.bashrc` automatically. If your cluster shell startu
 source ~/.bashrc
 ```
 
-The script also asks whether to install Codex CLI. It runs the installer in non-interactive mode so Codex does not start automatically during setup. If the cluster blocks downloads from login nodes, skip that step and install Codex using your cluster's preferred software process.
+The script also asks whether to install Codex CLI. It runs the installer in non-interactive mode so the installer itself does not start Codex mid-setup. After setup is complete, the script asks whether to start Codex from the configured shell. If the cluster blocks downloads from login nodes, skip the install step and install Codex using your cluster's preferred software process.

@@ -179,7 +179,7 @@ install_codex_cli_if_requested() {
 
   echo "Installing Codex CLI. This may take a few minutes..."
   echo "The installer will not start Codex automatically."
-  if CODEX_NON_INTERACTIVE=1 CI=1 sh "$installer_script"; then
+  if printf 'n\n' | CODEX_NON_INTERACTIVE=1 CI=1 sh "$installer_script"; then
     rm -f "$installer_script"
     echo "Codex CLI install finished."
     source_bashrc_for_this_session
@@ -203,6 +203,38 @@ install_codex_cli_if_requested() {
     echo "Codex CLI was not installed."
     echo "If the cluster blocks downloads, install Codex manually from: https://openai.com/codex/"
     return 1
+  fi
+}
+
+start_codex_if_requested() {
+  local codex_path=""
+  local status=0
+
+  source_bashrc_for_this_session
+
+  if ! command -v codex >/dev/null 2>&1; then
+    return 0
+  fi
+
+  codex_path="$(command -v codex)"
+  if ! ask_yes_no "Start Codex now? [y/N] " "n"; then
+    return 0
+  fi
+
+  echo "Starting Codex:"
+  echo "  $codex_path"
+  echo "When you exit Codex, you will return to this shell."
+
+  set +e
+  "$codex_path"
+  status=$?
+  set -e
+
+  if [[ "$status" -eq 0 ]]; then
+    echo "Codex closed."
+  else
+    echo "Codex exited with status $status."
+    echo "Setup is still complete. Try opening a new Bash session and running: codex"
   fi
 }
 
@@ -240,7 +272,11 @@ main() {
   install_codex_cli_if_requested || true
 
   echo
-  echo "Done. Open a new Bash session or run:"
+  echo "Setup complete."
+  start_codex_if_requested
+
+  echo
+  echo "Done. To refresh another shell later, run:"
   echo "  source ~/.bashrc"
 }
 
