@@ -137,7 +137,7 @@ final class SetupState: ObservableObject {
     private let workspaceManager: WorkspaceManager
     private let runner: ProcessRunner
 
-    private var sessionPlaintextAPIKey: String?
+    private var sessionAPIKeyForTesting: String?
 
     init(
         codexLocator: CodexLocator = CodexLocator(),
@@ -351,13 +351,13 @@ final class SetupState: ObservableObject {
             if selectedStorageMode == .keychain {
                 try keychainManager.saveAPIKey(trimmedKey)
                 try launchAgentManager.installFiles()
-                let launchResult = await launchAgentManager.loadImmediately()
+                let launchResult = await launchAgentManager.loadImmediately(apiKey: trimmedKey)
                 guard launchResult.succeeded else {
                     throw SetupError.operationFailed(launchResult.message)
                 }
-                sessionPlaintextAPIKey = nil
+                sessionAPIKeyForTesting = trimmedKey
             } else {
-                sessionPlaintextAPIKey = trimmedKey
+                sessionAPIKeyForTesting = trimmedKey
             }
             apiKey = ""
 
@@ -370,7 +370,7 @@ final class SetupState: ObservableObject {
             statusMessage = "Writing recommended Codex config."
             try configManager.writeFreshConfig(
                 storageMode: selectedStorageMode,
-                plaintextAPIKey: sessionPlaintextAPIKey,
+                plaintextAPIKey: sessionAPIKeyForTesting,
                 reasoningEffort: selectedReasoningEffort
             )
 
@@ -410,14 +410,14 @@ final class SetupState: ObservableObject {
             if selectedStorageMode == .keychain {
                 try keychainManager.saveAPIKey(trimmedKey)
                 try launchAgentManager.installFiles()
-                let launchResult = await launchAgentManager.loadImmediately()
+                let launchResult = await launchAgentManager.loadImmediately(apiKey: trimmedKey)
                 guard launchResult.succeeded else {
                     throw SetupError.operationFailed(launchResult.message)
                 }
-                sessionPlaintextAPIKey = nil
+                sessionAPIKeyForTesting = trimmedKey
                 statusMessage = launchResult.message
             } else {
-                sessionPlaintextAPIKey = trimmedKey
+                sessionAPIKeyForTesting = trimmedKey
                 statusMessage = "Plaintext fallback selected. The API key will be written to config.toml."
             }
 
@@ -454,7 +454,7 @@ final class SetupState: ObservableObject {
         await performBusy("Writing fresh Codex config.") {
             try configManager.writeFreshConfig(
                 storageMode: selectedStorageMode,
-                plaintextAPIKey: sessionPlaintextAPIKey,
+                plaintextAPIKey: sessionAPIKeyForTesting,
                 reasoningEffort: selectedReasoningEffort
             )
             statusMessage = "Wrote fresh Codex config at \(configManager.configURL.path)."
@@ -490,7 +490,7 @@ final class SetupState: ObservableObject {
         detection = installation
         setupReceipt = makeSetupReceipt(installation: installation)
 
-        sessionPlaintextAPIKey = nil
+        sessionAPIKeyForTesting = nil
         await refreshDashboard()
         showDashboard = true
     }
@@ -679,7 +679,7 @@ final class SetupState: ObservableObject {
 
         if moveInstallerToTrashOnFinish {
             await performBusy("Finishing setup.") {
-                sessionPlaintextAPIKey = nil
+                sessionAPIKeyForTesting = nil
                 let cleanupResult = await appCleanupManager.moveCurrentAppToTrashIfPossible()
                 switch cleanupResult {
                 case .movedToTrash:
@@ -949,9 +949,9 @@ final class SetupState: ObservableObject {
 
     private func currentAPIKeyForTesting() -> String? {
         if selectedStorageMode == .plaintextConfig {
-            return sessionPlaintextAPIKey ?? configManager.readPlaintextBearerToken()
+            return sessionAPIKeyForTesting ?? configManager.readPlaintextBearerToken()
         }
-        return (try? keychainManager.readAPIKey()) ?? configManager.readPlaintextBearerToken()
+        return sessionAPIKeyForTesting ?? (try? keychainManager.readAPIKey()) ?? configManager.readPlaintextBearerToken()
     }
 
     private func makeSetupReceipt(installation: CodexInstallation?) -> SetupReceipt {

@@ -72,7 +72,7 @@ final class LaunchAgentManager: @unchecked Sendable {
         try data.write(to: plistURL, options: .atomic)
     }
 
-    func loadImmediately() async -> LaunchAgentOperationResult {
+    func loadImmediately(apiKey: String? = nil) async -> LaunchAgentOperationResult {
         guard fileManager.fileExists(atPath: plistURL.path) else {
             return LaunchAgentOperationResult(succeeded: false, message: "LaunchAgent plist is not installed.")
         }
@@ -81,38 +81,34 @@ final class LaunchAgentManager: @unchecked Sendable {
         var messages: [String] = []
 
         do {
-            let bootstrap = try await runner.run(executable: "/bin/launchctl", arguments: ["bootstrap", domain, plistURL.path])
-            if !bootstrap.succeeded {
-                messages.append("bootstrap reported: \(bootstrap.combinedOutput)")
-                _ = try? await runner.run(executable: "/bin/launchctl", arguments: ["bootout", domain, plistURL.path])
-                let retry = try await runner.run(executable: "/bin/launchctl", arguments: ["bootstrap", domain, plistURL.path])
-                if !retry.succeeded {
-                    return LaunchAgentOperationResult(
-                        succeeded: false,
-                        message: "LaunchAgent could not be loaded:\n\(retry.combinedOutput)"
-                    )
+            _ = try? await runner.run(executable: "/bin/launchctl", arguments: ["bootout", domain, plistURL.path])
+
+            if let apiKey, !apiKey.isEmpty {
+                let setEnvironment = try await runner.run(executable: "/bin/launchctl", arguments: ["setenv", environmentKey, apiKey])
+                if !setEnvironment.succeeded {
+                    messages.append("launchctl setenv reported: \(setEnvironment.combinedOutput)")
                 }
             }
 
-            let kickstart = try await runner.run(executable: "/bin/launchctl", arguments: ["kickstart", "-k", "\(domain)/\(label)"])
-            if !kickstart.succeeded {
-                messages.append("kickstart reported: \(kickstart.combinedOutput)")
-            }
-
-            let helper = try await runner.run(executable: "/bin/zsh", arguments: [helperScriptURL.path])
-            if !helper.succeeded {
+            let bootstrap = try await runner.run(executable: "/bin/launchctl", arguments: ["bootstrap", domain, plistURL.path])
+            if !bootstrap.succeeded {
                 return LaunchAgentOperationResult(
                     succeeded: false,
-                    message: "LaunchAgent loaded, but the helper could not set the GUI environment variable."
+                    message: "LaunchAgent could not be loaded:\n\(bootstrap.combinedOutput)"
                 )
             }
 
-            let status = await status()
-            if status.environmentVariableSet {
+            let status = await waitForReady()
+            if status.loaded && status.environmentVariableSet {
                 return LaunchAgentOperationResult(succeeded: true, message: "LaunchAgent loaded and GUI environment variable is set.")
             }
 
-            messages.append("launchctl getenv did not report \(environmentKey).")
+            if !status.loaded {
+                messages.append("launchctl does not report \(label) as loaded.")
+            }
+            if !status.environmentVariableSet {
+                messages.append("launchctl getenv did not report \(environmentKey).")
+            }
             return LaunchAgentOperationResult(succeeded: false, message: messages.joined(separator: "\n"))
         } catch {
             return LaunchAgentOperationResult(succeeded: false, message: error.localizedDescription)
@@ -159,6 +155,12 @@ final class LaunchAgentManager: @unchecked Sendable {
         #!/bin/zsh
         set -eu
 
+        EXISTING="$(/bin/launchctl getenv \(environmentKey) 2>/dev/null || true)"
+        if [ -n "$EXISTING" ]; then
+          exit 0
+        fi
+        unset EXISTING
+
         KEY="$(/usr/bin/security find-generic-password -s "\(environmentKey)" -a "$(/usr/bin/id -un)" -w 2>/dev/null || true)"
         if [ -z "$KEY" ]; then
           exit 1
@@ -182,5 +184,21 @@ final class LaunchAgentManager: @unchecked Sendable {
             return false
         }
         return result.succeeded && !result.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func waitForReady(timeoutSeconds: TimeInterval = 45) async -> LaunchAgentStatus {
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+        var latest = await status()
+
+        while Date() < deadline {
+            if latest.loaded && latest.environmentVariableSet {
+                return latest
+            }
+
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            latest = await status()
+        }
+
+        return latest
     }
 }

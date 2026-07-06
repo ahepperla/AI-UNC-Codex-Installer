@@ -89,7 +89,7 @@ It runs:
 <Codex home>/unc/load_unc_codex_env.sh
 ```
 
-The helper script reads the key from Keychain and runs:
+During setup, the app seeds the current GUI environment directly from the key the user just entered. On later loads, the helper script reads the key from Keychain only if the environment variable is not already set, then runs:
 
 ```sh
 /bin/launchctl setenv UNC_AZURE_API_KEY "$KEY"
