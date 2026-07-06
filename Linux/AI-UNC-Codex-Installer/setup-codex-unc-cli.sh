@@ -32,6 +32,66 @@ ask_yes_no() {
   done
 }
 
+choose_reasoning_effort() {
+  local answer
+
+  echo "Reasoning effort controls how much time Codex spends thinking."
+  echo "Options: minimal, low, medium, high, xhigh"
+
+  while true; do
+    read -r -p "Use medium reasoning effort? [Y/n or type another option] " answer
+    answer=${answer:-y}
+    case "$answer" in
+      y|Y|yes|YES|Yes)
+        REASONING_EFFORT="medium"
+        return 0
+        ;;
+      n|N|no|NO|No)
+        read -r -p "Choose reasoning effort [minimal/low/medium/high/xhigh]: " answer
+        ;;
+    esac
+
+    case "$answer" in
+      minimal|low|medium|high|xhigh)
+        REASONING_EFFORT="$answer"
+        return 0
+        ;;
+      *)
+        echo "Please choose one of: minimal, low, medium, high, xhigh."
+        ;;
+    esac
+  done
+}
+
+source_bashrc_for_this_session() {
+  local bashrc="$HOME/.bashrc"
+  local old_opts="$-"
+  local old_pipefail="off"
+
+  if [[ ! -f "$bashrc" ]]; then
+    return 0
+  fi
+
+  if set -o | grep -q '^pipefail[[:space:]]*on'; then
+    old_pipefail="on"
+  fi
+
+  set +u
+  if source "$bashrc"; then
+    echo "Loaded ~/.bashrc for this setup session."
+  else
+    echo "Could not load ~/.bashrc automatically. Open a new Bash session or run: source ~/.bashrc"
+  fi
+
+  case "$old_opts" in *e*) set -e ;; *) set +e ;; esac
+  case "$old_opts" in *u*) set -u ;; *) set +u ;; esac
+  if [[ "$old_pipefail" == "on" ]]; then
+    set -o pipefail
+  else
+    set +o pipefail
+  fi
+}
+
 write_bashrc_export() {
   local api_key="$1"
   local bashrc="$HOME/.bashrc"
@@ -111,6 +171,14 @@ install_codex_cli_if_requested() {
   echo "Installing Codex CLI. This may take a few minutes..."
   if curl -fsSL "$CODEX_INSTALL_URL" | sh; then
     echo "Codex CLI install finished."
+    source_bashrc_for_this_session
+    if command -v codex >/dev/null 2>&1; then
+      echo "Codex CLI is available at:"
+      echo "  $(command -v codex)"
+    else
+      echo "Codex CLI was installed, but it is not on PATH in this shell yet."
+      echo "Open a new Bash session or check your cluster's shell startup files."
+    fi
   else
     echo "Codex CLI install did not finish."
     echo "If the cluster blocks downloads, install Codex manually from: https://openai.com/codex/"
@@ -134,9 +202,13 @@ main() {
 
   export "$ENV_KEY=$api_key"
 
+  choose_reasoning_effort
+  echo "Using reasoning effort: $REASONING_EFFORT"
+
   write_bashrc_export "$api_key"
   echo "Saved $ENV_KEY export in:"
   echo "  $HOME/.bashrc"
+  source_bashrc_for_this_session
 
   if [[ "$(basename "${SHELL:-}")" != "bash" ]]; then
     echo "Note: your login shell appears to be $(basename "${SHELL:-unknown}"). This script updates ~/.bashrc only."

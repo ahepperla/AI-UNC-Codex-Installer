@@ -5,10 +5,11 @@ This is the plain terminal setup path for Linux systems such as an HPC cluster.
 It does three things:
 
 - Prompts for the UNC Azure OpenAI API key.
+- Asks whether to use the default `medium` reasoning effort.
 - Writes `export UNC_AZURE_API_KEY=...` to `~/.bashrc`.
 - Writes the UNC Codex config to `$CODEX_HOME/config.toml`, or `~/.codex/config.toml` when `CODEX_HOME` is not set.
 
-If a config already exists, the script backs it up before writing the UNC config.
+If a config already exists, the script backs it up before writing the UNC config. After updating `~/.bashrc`, the script loads it for the current setup session so the API key is available before the optional Codex CLI install runs.
 
 ## Run
 
@@ -17,7 +18,7 @@ chmod +x setup-codex-unc-cli.sh
 ./setup-codex-unc-cli.sh
 ```
 
-After setup, open a new Bash session or run:
+The script tries to load `~/.bashrc` automatically. If your cluster shell startup files block that, open a new Bash session or run:
 
 ```bash
 source ~/.bashrc
