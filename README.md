@@ -17,9 +17,13 @@ Windows/
     README.md
     AI-UNC-Codex-Installer.ps1
     Run AI UNC Codex Installer.cmd
+Linux/
+  AI-UNC-Codex-Installer/
+    README.md
+    setup-codex-unc-cli.sh
 ```
 
-The platform folders use the same `AI-UNC-Codex-Installer` naming scheme. The Mac app is a native SwiftUI project. The Windows installer is a PowerShell GUI.
+The platform folders use the same `AI-UNC-Codex-Installer` naming scheme. The Mac app is a native SwiftUI project, the Windows installer is a PowerShell GUI, and the Linux version is a plain Bash script for terminal-only environments.
 
 ## Quick Start
 
@@ -42,6 +46,23 @@ Windows/AI-UNC-Codex-Installer
 ```
 
 Double-click `Run AI UNC Codex Installer.cmd`, paste the UNC Azure OpenAI API key, and click `Run Recommended Setup`.
+
+### Linux/HPC
+
+Open:
+
+```text
+Linux/AI-UNC-Codex-Installer
+```
+
+Run:
+
+```bash
+chmod +x setup-codex-unc-cli.sh
+./setup-codex-unc-cli.sh
+```
+
+The script prompts for the UNC Azure OpenAI API key, writes the Codex config, updates `~/.bashrc`, and then asks whether to install Codex CLI.
 
 ## What The Installers Do
 
@@ -73,6 +94,7 @@ Current local package names:
 ```text
 AI-UNC-Codex-Installer-AppleSilicon.zip
 AI-UNC-Codex-Installer-Windows.zip
+AI-UNC-Codex-Installer-Linux-HPC.zip
 ```
 
 For wider Mac distribution, sign and notarize the app with an Apple Developer ID certificate. The app should not be sandboxed unless it is redesigned, because setup writes to the Codex home directory, LaunchAgents, and Keychain.
@@ -81,3 +103,4 @@ For wider Mac distribution, sign and notarize the app with an Apple Developer ID
 
 - [Mac installer notes](Mac/AI-UNC-Codex-Installer/README.md)
 - [Windows installer notes](Windows/AI-UNC-Codex-Installer/README.md)
+- [Linux/HPC installer notes](Linux/AI-UNC-Codex-Installer/README.md)

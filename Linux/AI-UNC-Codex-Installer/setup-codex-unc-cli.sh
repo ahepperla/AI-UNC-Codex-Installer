@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MODEL="gpt-5.5"
+REASONING_EFFORT="medium"
+PROVIDER="azure"
+BASE_URL="https://azureaiapi.cloud.unc.edu/openai/v1"
+ENV_KEY="UNC_AZURE_API_KEY"
+CODEX_INSTALL_URL="https://chatgpt.com/codex/install.sh"
+
+MARKER_START="# >>> AI @ UNC Codex Installer >>>"
+MARKER_END="# <<< AI @ UNC Codex Installer <<<"
+
+shell_quote() {
+  local value=${1//\'/\'\\\'\'}
+  printf "'%s'" "$value"
+}
+
+ask_yes_no() {
+  local prompt="$1"
+  local default="$2"
+  local answer
+
+  while true; do
+    read -r -p "$prompt" answer
+    answer=${answer:-$default}
+    case "$answer" in
+      y|Y|yes|YES|Yes) return 0 ;;
+      n|N|no|NO|No) return 1 ;;
+      *) echo "Please answer y or n." ;;
+    esac
+  done
+}
+
+write_bashrc_export() {
+  local api_key="$1"
+  local bashrc="$HOME/.bashrc"
+  local temp_file
+
+  temp_file="$(mktemp "${TMPDIR:-/tmp}/unc-codex-bashrc.XXXXXX")"
+  touch "$bashrc"
+
+  awk -v start="$MARKER_START" -v end="$MARKER_END" '
+    $0 == start { skip = 1; next }
+    $0 == end { skip = 0; next }
+    skip != 1 { print }
+  ' "$bashrc" > "$temp_file"
+
+  {
+    cat "$temp_file"
+    printf "\n%s\n" "$MARKER_START"
+    printf "export %s=%s\n" "$ENV_KEY" "$(shell_quote "$api_key")"
+    printf "%s\n" "$MARKER_END"
+  } > "$bashrc"
+
+  rm -f "$temp_file"
+}
+
+write_codex_config() {
+  local codex_home="${CODEX_HOME:-$HOME/.codex}"
+  local config_file="$codex_home/config.toml"
+  local backup_file
+
+  mkdir -p "$codex_home"
+
+  if [[ -f "$config_file" ]]; then
+    backup_file="$config_file.backup.$(date +%Y%m%d_%H%M%S)"
+    cp "$config_file" "$backup_file"
+    echo "Backed up existing config:"
+    echo "  $backup_file"
+  fi
+
+  cat > "$config_file" <<EOF
+model = "$MODEL"
+model_provider = "$PROVIDER"
+model_reasoning_effort = "$REASONING_EFFORT"
+
+[model_providers.$PROVIDER]
+name = "Azure OpenAI"
+base_url = "$BASE_URL"
+env_key = "$ENV_KEY"
+wire_api = "responses"
+EOF
+
+  echo "Wrote Codex config:"
+  echo "  $config_file"
+}
+
+install_codex_cli_if_requested() {
+  local codex_path=""
+
+  if command -v codex >/dev/null 2>&1; then
+    codex_path="$(command -v codex)"
+    echo "Codex CLI is already installed:"
+    echo "  $codex_path"
+    if ! ask_yes_no "Reinstall or update Codex CLI now? [y/N] " "n"; then
+      return 0
+    fi
+  else
+    if ! ask_yes_no "Install Codex CLI now? [Y/n] " "y"; then
+      return 0
+    fi
+  fi
+
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "curl was not found, so this script cannot download the Codex CLI installer."
+    echo "Install Codex manually from: https://openai.com/codex/"
+    return 1
+  fi
+
+  echo "Installing Codex CLI. This may take a few minutes..."
+  if curl -fsSL "$CODEX_INSTALL_URL" | sh; then
+    echo "Codex CLI install finished."
+  else
+    echo "Codex CLI install did not finish."
+    echo "If the cluster blocks downloads, install Codex manually from: https://openai.com/codex/"
+    return 1
+  fi
+}
+
+main() {
+  local api_key=""
+
+  echo "AI @ UNC Codex setup for Linux/HPC"
+  echo
+
+  while [[ -z "$api_key" ]]; do
+    read -r -s -p "Paste UNC Azure OpenAI API key: " api_key
+    echo
+    if [[ -z "$api_key" ]]; then
+      echo "API key cannot be empty."
+    fi
+  done
+
+  export "$ENV_KEY=$api_key"
+
+  write_bashrc_export "$api_key"
+  echo "Saved $ENV_KEY export in:"
+  echo "  $HOME/.bashrc"
+
+  if [[ "$(basename "${SHELL:-}")" != "bash" ]]; then
+    echo "Note: your login shell appears to be $(basename "${SHELL:-unknown}"). This script updates ~/.bashrc only."
+  fi
+
+  write_codex_config
+
+  echo
+  install_codex_cli_if_requested || true
+
+  echo
+  echo "Done. Open a new Bash session or run:"
+  echo "  source ~/.bashrc"
+}
+
+main "$@"
