@@ -148,6 +148,7 @@ EOF
 
 install_codex_cli_if_requested() {
   local codex_path=""
+  local installer_script=""
 
   if command -v codex >/dev/null 2>&1; then
     codex_path="$(command -v codex)"
@@ -168,8 +169,18 @@ install_codex_cli_if_requested() {
     return 1
   fi
 
+  installer_script="$(mktemp "${TMPDIR:-/tmp}/codex-install.XXXXXX.sh")"
+  if ! curl -fsSL "$CODEX_INSTALL_URL" -o "$installer_script"; then
+    rm -f "$installer_script"
+    echo "Could not download the Codex CLI installer."
+    echo "If the cluster blocks downloads, install Codex manually from: https://openai.com/codex/"
+    return 1
+  fi
+
   echo "Installing Codex CLI. This may take a few minutes..."
-  if curl -fsSL "$CODEX_INSTALL_URL" | sh; then
+  echo "The installer will not start Codex automatically."
+  if CODEX_NON_INTERACTIVE=1 CI=1 sh "$installer_script"; then
+    rm -f "$installer_script"
     echo "Codex CLI install finished."
     source_bashrc_for_this_session
     if command -v codex >/dev/null 2>&1; then
@@ -180,7 +191,16 @@ install_codex_cli_if_requested() {
       echo "Open a new Bash session or check your cluster's shell startup files."
     fi
   else
-    echo "Codex CLI install did not finish."
+    rm -f "$installer_script"
+    source_bashrc_for_this_session
+    if command -v codex >/dev/null 2>&1; then
+      echo "Codex CLI is available at:"
+      echo "  $(command -v codex)"
+      echo "The installer returned a warning or nonzero status, but Codex CLI is installed."
+      return 0
+    fi
+
+    echo "Codex CLI was not installed."
     echo "If the cluster blocks downloads, install Codex manually from: https://openai.com/codex/"
     return 1
   fi
