@@ -89,8 +89,6 @@ The Mac app has a plaintext fallback for support cases, but it should not be the
 
 ## Distribution
 
-Do not commit local builds, zips, or DerivedData output to the repository. Use GitHub Releases or an internal UNC channel for packaged test builds.
-
 Current local package names:
 
 ```text
