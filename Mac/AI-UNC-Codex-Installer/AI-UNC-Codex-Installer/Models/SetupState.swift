@@ -122,7 +122,10 @@ final class SetupState: ObservableObject {
     @Published var installStatusTitle = ""
     @Published var installStatusDetail = ""
     @Published var installStatusSeverity: DiagnosticSeverity?
-    @Published var selectedReasoningEffort: CodexReasoningEffort = RecommendedConfig.uncCodex.reasoningEffort
+    @Published var selectedModel: CodexModel = .recommended {
+        didSet { normalizeReasoningForSelectedModel() }
+    }
+    @Published var selectedReasoningEffort: CodexReasoningEffort? = RecommendedConfig.uncCodex.reasoningEffort
 
     private let codexLocator: CodexLocator
     private let codexInstaller: CodexInstaller
@@ -174,7 +177,10 @@ final class SetupState: ObservableObject {
     }
 
     var selectedReasoningEffortDescription: String {
-        "\(selectedReasoningEffort.label): \(selectedReasoningEffort.helpText)"
+        guard let selectedReasoningEffort else {
+            return "Model default: \(selectedModel.reasoningHelpText)"
+        }
+        return "\(selectedReasoningEffort.label): \(selectedReasoningEffort.helpText)"
     }
 
     var codexHomeDescription: String {
@@ -230,6 +236,7 @@ final class SetupState: ObservableObject {
         workspaceDirectoryPath = workspaceManager.workspaceURL.path
         await refreshDashboard()
         let summary = dashboardSnapshot.configSummary
+        syncSelections(from: summary)
         showDashboard = summary.exists && summary.mismatches(from: RecommendedConfig.uncCodex).isEmpty
         if !showDashboard {
             currentStep = .welcome
@@ -371,12 +378,13 @@ final class SetupState: ObservableObject {
             try configManager.writeFreshConfig(
                 storageMode: selectedStorageMode,
                 plaintextAPIKey: sessionAPIKeyForTesting,
+                model: selectedModel.id,
                 reasoningEffort: selectedReasoningEffort
             )
 
             currentStep = .testConnection
             statusMessage = "Testing UNC endpoint."
-            let result = await endpointTester.test(apiKey: currentAPIKeyForTesting())
+            let result = await endpointTester.test(apiKey: currentAPIKeyForTesting(), model: selectedModel.id)
             lastConnectionTest = result
 
             guard result.success else {
@@ -455,6 +463,7 @@ final class SetupState: ObservableObject {
             try configManager.writeFreshConfig(
                 storageMode: selectedStorageMode,
                 plaintextAPIKey: sessionAPIKeyForTesting,
+                model: selectedModel.id,
                 reasoningEffort: selectedReasoningEffort
             )
             statusMessage = "Wrote fresh Codex config at \(configManager.configURL.path)."
@@ -465,7 +474,7 @@ final class SetupState: ObservableObject {
     func testConnection() async {
         await performBusy("Testing UNC endpoint.") {
             let key = currentAPIKeyForTesting()
-            let result = await endpointTester.test(apiKey: key)
+            let result = await endpointTester.test(apiKey: key, model: selectedModel.id)
             lastConnectionTest = result
             if result.success {
                 let installation = await codexLocator.detectInstallation()
@@ -855,6 +864,7 @@ final class SetupState: ObservableObject {
             try configManager.writeFreshConfig(
                 storageMode: mode,
                 plaintextAPIKey: token,
+                model: selectedModel.id,
                 reasoningEffort: selectedReasoningEffort
             )
             statusMessage = "Codex config was reset. \(result.message)"
@@ -881,6 +891,7 @@ final class SetupState: ObservableObject {
             try configManager.writeFreshConfig(
                 storageMode: mode,
                 plaintextAPIKey: token,
+                model: selectedModel.id,
                 reasoningEffort: selectedReasoningEffort
             )
             statusMessage = "Updated Codex config to the recommended settings. \(result.message)"
@@ -954,6 +965,32 @@ final class SetupState: ObservableObject {
         return sessionAPIKeyForTesting ?? (try? keychainManager.readAPIKey()) ?? configManager.readPlaintextBearerToken()
     }
 
+    private func normalizeReasoningForSelectedModel() {
+        if selectedModel.supportsReasoningSelection {
+            if let selectedReasoningEffort,
+               selectedModel.supportedReasoningEfforts.contains(selectedReasoningEffort) {
+                return
+            }
+            selectedReasoningEffort = selectedModel.defaultReasoningEffort ?? selectedModel.supportedReasoningEfforts.first
+        } else {
+            selectedReasoningEffort = nil
+        }
+    }
+
+    private func syncSelections(from summary: ConfigSummary) {
+        if let model = CodexModel.approvedModel(id: summary.model) {
+            selectedModel = model
+        }
+
+        if let rawReasoningEffort = summary.reasoningEffort,
+           let reasoningEffort = CodexReasoningEffort(rawValue: rawReasoningEffort),
+           selectedModel.supportedReasoningEfforts.contains(reasoningEffort) {
+            selectedReasoningEffort = reasoningEffort
+        } else {
+            normalizeReasoningForSelectedModel()
+        }
+    }
+
     private func makeSetupReceipt(installation: CodexInstallation?) -> SetupReceipt {
         SetupReceipt(
             generatedAt: Date(),
@@ -966,7 +1003,8 @@ final class SetupState: ObservableObject {
             endpointTestTime: lastConnectionTest?.testedAt,
             endpointTestStatus: lastConnectionTest?.message ?? "not run",
             workspacePath: workspaceDirectoryPath.isEmpty ? workspaceManager.workspaceURL.path : workspaceDirectoryPath,
-            reasoningEffort: selectedReasoningEffort.rawValue,
+            model: selectedModel.id,
+            reasoningEffort: selectedReasoningEffort?.rawValue ?? "model default",
             codexDesktopPath: installation?.desktopAppPath,
             codexCLIPath: installation?.cliPath,
             codexVersion: installation?.version,

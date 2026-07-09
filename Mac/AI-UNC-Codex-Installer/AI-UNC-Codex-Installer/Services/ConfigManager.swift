@@ -100,19 +100,20 @@ final class ConfigManager: @unchecked Sendable {
     func writeFreshConfig(
         storageMode: APIKeyStorageMode,
         plaintextAPIKey: String? = nil,
-        reasoningEffort: CodexReasoningEffort = RecommendedConfig.uncCodex.reasoningEffort
+        model: String = RecommendedConfig.uncCodex.recommendedModel,
+        reasoningEffort: CodexReasoningEffort? = RecommendedConfig.uncCodex.reasoningEffort
     ) throws {
         try ensureConfigDirectoryExists()
 
         let contents: String
         switch storageMode {
         case .keychain:
-            contents = Self.keychainConfig(reasoningEffort: reasoningEffort)
+            contents = Self.keychainConfig(model: model, reasoningEffort: reasoningEffort)
         case .plaintextConfig:
             guard let plaintextAPIKey, !plaintextAPIKey.isEmpty else {
                 throw ConfigManagerError.missingPlaintextAPIKey
             }
-            contents = Self.plaintextConfig(apiKey: plaintextAPIKey, reasoningEffort: reasoningEffort)
+            contents = Self.plaintextConfig(apiKey: plaintextAPIKey, model: model, reasoningEffort: reasoningEffort)
         }
 
         try contents.write(to: configURL, atomically: true, encoding: .utf8)
@@ -197,11 +198,19 @@ final class ConfigManager: @unchecked Sendable {
         return formatter.string(from: Date())
     }
 
-    static func keychainConfig(reasoningEffort: CodexReasoningEffort = RecommendedConfig.uncCodex.reasoningEffort) -> String {
+    private static func reasoningLine(for reasoningEffort: CodexReasoningEffort?) -> String {
+        guard let reasoningEffort else { return "" }
+        return "model_reasoning_effort = \"\(reasoningEffort.rawValue)\"\n"
+    }
+
+    static func keychainConfig(
+        model: String = RecommendedConfig.uncCodex.recommendedModel,
+        reasoningEffort: CodexReasoningEffort? = RecommendedConfig.uncCodex.reasoningEffort
+    ) -> String {
         """
-        model = "gpt-5.5"
+        model = "\(quote(model))"
         model_provider = "azure"
-        model_reasoning_effort = "\(reasoningEffort.rawValue)"
+        \(reasoningLine(for: reasoningEffort))
 
         [model_providers.azure]
         name = "Azure OpenAI"
@@ -213,12 +222,13 @@ final class ConfigManager: @unchecked Sendable {
 
     static func plaintextConfig(
         apiKey: String,
-        reasoningEffort: CodexReasoningEffort = RecommendedConfig.uncCodex.reasoningEffort
+        model: String = RecommendedConfig.uncCodex.recommendedModel,
+        reasoningEffort: CodexReasoningEffort? = RecommendedConfig.uncCodex.reasoningEffort
     ) -> String {
         """
-        model = "gpt-5.5"
+        model = "\(quote(model))"
         model_provider = "azure"
-        model_reasoning_effort = "\(reasoningEffort.rawValue)"
+        \(reasoningLine(for: reasoningEffort))
 
         [model_providers.azure]
         name = "Azure OpenAI"

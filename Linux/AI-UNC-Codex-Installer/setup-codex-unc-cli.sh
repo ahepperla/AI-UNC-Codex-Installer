@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODEL="gpt-5.5"
+DEFAULT_MODEL="gpt-5.5"
+MODEL="$DEFAULT_MODEL"
 REASONING_EFFORT="medium"
 PROVIDER="azure"
 BASE_URL="https://azureaiapi.cloud.unc.edu/openai/v1"
@@ -10,6 +11,52 @@ CODEX_INSTALL_URL="https://chatgpt.com/codex/install.sh"
 
 MARKER_START="# >>> AI @ UNC Codex Installer >>>"
 MARKER_END="# <<< AI @ UNC Codex Installer <<<"
+
+CODEX_MODEL_DEPLOYMENTS=(
+  "gpt-5.5"
+  "gpt-5.4"
+  "gpt-5.4-mini"
+  "gpt-5.4-nano"
+  "gpt-5.3-codex"
+  "gpt-5.2"
+  "gpt-5.1"
+  "gpt-5"
+  "gpt-5-mini"
+  "gpt-5-nano"
+  "gpt-4.1"
+  "gpt-4.1-mini"
+  "gpt-4.1-nano"
+  "gpt-4o"
+  "gpt-4o-mini"
+  "o1"
+  "o1-preview"
+  "o1-mini"
+  "o3-mini"
+  "chat"
+)
+
+CODEX_MODEL_LABELS=(
+  "gpt-5.5 Recommended"
+  "gpt-5.4"
+  "gpt-5.4-mini"
+  "gpt-5.4-nano"
+  "gpt-5.3-codex"
+  "gpt-5.2"
+  "gpt-5.1"
+  "gpt-5"
+  "gpt-5-mini"
+  "gpt-5-nano"
+  "gpt-4.1"
+  "gpt-4.1-mini"
+  "gpt-4.1-nano"
+  "gpt-4o"
+  "gpt-4o-mini"
+  "o1"
+  "o1-preview"
+  "o1-mini"
+  "o3-mini"
+  "chat (gpt-4.1-mini)"
+)
 
 shell_quote() {
   local value=${1//\'/\'\\\'\'}
@@ -32,8 +79,48 @@ ask_yes_no() {
   done
 }
 
+choose_model() {
+  local answer
+  local index
+
+  echo "Codex model:"
+  echo "  Press Enter for gpt-5.5 Recommended."
+  echo "  Image, embedding, and audio deployments are intentionally not listed."
+  echo
+
+  for index in "${!CODEX_MODEL_DEPLOYMENTS[@]}"; do
+    printf "  %2d) %s\n" "$((index + 1))" "${CODEX_MODEL_LABELS[$index]}"
+  done
+
+  while true; do
+    read -r -p "Choose model [1]: " answer
+    answer=${answer:-1}
+
+    if [[ "$answer" =~ ^[0-9]+$ ]] && (( answer >= 1 && answer <= ${#CODEX_MODEL_DEPLOYMENTS[@]} )); then
+      MODEL="${CODEX_MODEL_DEPLOYMENTS[$((answer - 1))]}"
+      return 0
+    fi
+
+    for index in "${!CODEX_MODEL_DEPLOYMENTS[@]}"; do
+      if [[ "$answer" == "${CODEX_MODEL_DEPLOYMENTS[$index]}" ]]; then
+        MODEL="$answer"
+        return 0
+      fi
+    done
+
+    echo "Choose a number from 1 to ${#CODEX_MODEL_DEPLOYMENTS[@]}, or type an approved deployment name."
+  done
+}
+
 choose_reasoning_effort() {
   local answer
+
+  if [[ "$MODEL" != "$DEFAULT_MODEL" ]]; then
+    REASONING_EFFORT=""
+    echo "Reasoning effort: model default for $MODEL."
+    echo "This script does not write unsupported reasoning options for alternate models."
+    return 0
+  fi
 
   echo "Reasoning effort controls how much time Codex spends thinking."
   echo "Options: minimal, low, medium, high, xhigh"
@@ -130,17 +217,18 @@ write_codex_config() {
     echo "  $backup_file"
   fi
 
-  cat > "$config_file" <<EOF
-model = "$MODEL"
-model_provider = "$PROVIDER"
-model_reasoning_effort = "$REASONING_EFFORT"
-
-[model_providers.$PROVIDER]
-name = "Azure OpenAI"
-base_url = "$BASE_URL"
-env_key = "$ENV_KEY"
-wire_api = "responses"
-EOF
+  {
+    printf 'model = "%s"\n' "$MODEL"
+    printf 'model_provider = "%s"\n' "$PROVIDER"
+    if [[ -n "$REASONING_EFFORT" ]]; then
+      printf 'model_reasoning_effort = "%s"\n' "$REASONING_EFFORT"
+    fi
+    printf '\n[model_providers.%s]\n' "$PROVIDER"
+    printf 'name = "Azure OpenAI"\n'
+    printf 'base_url = "%s"\n' "$BASE_URL"
+    printf 'env_key = "%s"\n' "$ENV_KEY"
+    printf 'wire_api = "responses"\n'
+  } > "$config_file"
 
   echo "Wrote Codex config:"
   echo "  $config_file"
@@ -254,8 +342,14 @@ main() {
 
   export "$ENV_KEY=$api_key"
 
+  choose_model
+  echo "Using model: $MODEL"
   choose_reasoning_effort
-  echo "Using reasoning effort: $REASONING_EFFORT"
+  if [[ -n "$REASONING_EFFORT" ]]; then
+    echo "Using reasoning effort: $REASONING_EFFORT"
+  else
+    echo "Using reasoning effort: model default"
+  fi
 
   write_bashrc_export "$api_key"
   echo "Saved $ENV_KEY export in:"

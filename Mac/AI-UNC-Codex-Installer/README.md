@@ -33,7 +33,9 @@ Setup is not marked complete unless the endpoint test succeeds. Codex installati
 - Stores the API key in macOS Keychain by default.
 - Backs up the existing `<Codex home>/config.toml`.
 - Writes a fresh Codex config with `env_key = "UNC_AZURE_API_KEY"`.
-- Uses `medium` reasoning effort by default.
+- Defaults to `gpt-5.5` with `medium` reasoning.
+- Offers only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
+- Omits `model_reasoning_effort` for alternate models unless their supported values are known.
 - Creates `~/Library/LaunchAgents/edu.unc.codex.env.plist`.
 - Creates `<Codex home>/unc/load_unc_codex_env.sh`.
 - Tests `https://azureaiapi.cloud.unc.edu/openai/v1/responses`.
@@ -104,7 +106,7 @@ Terminal windows that were already open before setup may not inherit the new env
 - If Keychain storage fails, confirm the user is in a normal macOS login session.
 - If the LaunchAgent is not loaded, use the dashboard reload action.
 - If the endpoint test fails with authentication, replace the API key.
-- If the endpoint test fails with model or endpoint errors, confirm the UNC deployment supports `gpt-5.5` and the Responses API.
+- If the endpoint test fails with model or endpoint errors, confirm the selected UNC deployment supports the Responses API.
 
 ## Reset Options
 

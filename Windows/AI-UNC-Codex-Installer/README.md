@@ -18,7 +18,9 @@ Most users should only need the recommended setup button. Troubleshooting and re
 - Uses `%USERPROFILE%\.codex` when `CODEX_HOME` is not set.
 - Creates `Documents\Codex` as the default workspace.
 - Lets advanced users choose a different workspace folder.
-- Uses `medium` reasoning effort by default.
+- Defaults to `gpt-5.5` with `medium` reasoning.
+- Offers only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
+- Omits `model_reasoning_effort` for alternate models unless their supported values are known.
 - Writes and tests the UNC config before offering Codex install or open actions.
 - Backs up the existing `<Codex home>\config.toml`.
 - Saves `UNC_AZURE_API_KEY` as a user environment variable.

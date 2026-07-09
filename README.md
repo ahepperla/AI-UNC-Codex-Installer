@@ -1,6 +1,6 @@
 # AI @ UNC Codex Installer
 
-This repository contains the Mac and Windows installers for setting up OpenAI Codex with UNC's Azure OpenAI-compatible endpoint.
+This repository contains the Mac, Windows, and Linux/HPC installers for setting up OpenAI Codex with UNC's Azure OpenAI-compatible endpoint.
 
 The goal is simple: a novice user should be able to paste the UNC API key, run the recommended setup, and end with a working Codex config. The installers back up existing config files before writing anything new.
 
@@ -70,7 +70,9 @@ The script prompts for the UNC Azure OpenAI API key, writes the Codex config, up
 - Use the platform default Codex home when `CODEX_HOME` is not set.
 - Create `Documents/Codex` as the default workspace.
 - Let advanced users choose a different workspace folder.
-- Use `medium` reasoning effort by default.
+- Default to `gpt-5.5` with `medium` reasoning.
+- Offer only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
+- Omit `model_reasoning_effort` for alternate models unless their supported values are known.
 - Back up an existing `config.toml` before writing the UNC config.
 - Test the UNC Responses API endpoint before marking setup complete.
 - Offer Codex install or launch actions only after configuration succeeds.

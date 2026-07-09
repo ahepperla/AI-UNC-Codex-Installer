@@ -65,17 +65,28 @@ final class DiagnosticsManager: @unchecked Sendable {
             failDetail: "Provider is \(summary.provider ?? "missing"); expected \(recommendedConfigManager.recommended.recommendedProvider)."
         ))
         results.append(result(
-            name: "Config contains expected model",
-            passed: summary.model == recommendedConfigManager.recommended.recommendedModel,
+            name: "Config contains approved model",
+            passed: CodexModel.approvedModel(id: summary.model) != nil,
             passDetail: "Model is \(summary.model ?? "missing").",
-            failDetail: "Model is \(summary.model ?? "missing"); expected \(recommendedConfigManager.recommended.recommendedModel)."
+            failDetail: "Model is \(summary.model ?? "missing"); expected an approved UNC Codex model."
         ))
         let validReasoningEfforts = CodexReasoningEffort.allCases.map(\.rawValue)
+        let approvedModel = CodexModel.approvedModel(id: summary.model)
+        let reasoningPassed: Bool = {
+            if let reasoningEffort = summary.reasoningEffort {
+                guard validReasoningEfforts.contains(reasoningEffort) else { return false }
+                if let approvedModel, approvedModel.supportedReasoningEfforts.isEmpty {
+                    return false
+                }
+                return true
+            }
+            return approvedModel?.supportsReasoningSelection == false
+        }()
         results.append(result(
-            name: "Config contains valid reasoning effort",
-            passed: summary.reasoningEffort.map { validReasoningEfforts.contains($0) } == true,
-            passDetail: "Reasoning effort is \(summary.reasoningEffort ?? "missing").",
-            failDetail: "Reasoning effort is \(summary.reasoningEffort ?? "missing"); expected one of \(validReasoningEfforts.joined(separator: ", "))."
+            name: "Config contains valid reasoning setting",
+            passed: reasoningPassed,
+            passDetail: "Reasoning effort is \(summary.reasoningEffort ?? "model default").",
+            failDetail: "Reasoning effort is \(summary.reasoningEffort ?? "missing"); expected a supported value or model default."
         ))
         results.append(result(
             name: "Config contains expected endpoint",
@@ -119,7 +130,7 @@ final class DiagnosticsManager: @unchecked Sendable {
         ))
 
         let apiKey = (try? keychainManager.readAPIKey()) ?? configManager.readPlaintextBearerToken()
-        let endpointResult = await endpointTester.test(apiKey: apiKey)
+        let endpointResult = await endpointTester.test(apiKey: apiKey, model: summary.model ?? recommendedConfigManager.recommended.recommendedModel)
         results.append(DiagnosticResult(
             name: "Endpoint reachable",
             severity: endpointResult.httpStatus == nil ? .fail : .pass,

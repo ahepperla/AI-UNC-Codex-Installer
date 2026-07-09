@@ -23,8 +23,9 @@ struct WelcomeView: View {
                             .disabled(state.isBusy)
                     }
 
-                    ReasoningEffortDropdown(
-                        selection: $state.selectedReasoningEffort,
+                    ModelAndReasoningControls(
+                        selectedModel: $state.selectedModel,
+                        selectedReasoningEffort: $state.selectedReasoningEffort,
                         isDisabled: state.isBusy
                     )
 

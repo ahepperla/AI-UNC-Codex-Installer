@@ -7,7 +7,34 @@ Add-Type -AssemblyName System.Drawing
 
 $script:AppName = 'AI @ UNC Codex Installer'
 $script:EnvKey = 'UNC_AZURE_API_KEY'
-$script:Model = 'gpt-5.5'
+$script:DefaultModel = 'gpt-5.5'
+$script:ModelOptions = @(
+    [pscustomobject]@{ Deployment = 'gpt-5.5'; Label = 'gpt-5.5 Recommended'; Reasoning = @('minimal', 'low', 'medium', 'high', 'xhigh'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.4'; Label = 'gpt-5.4'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-5.4-mini'; Label = 'gpt-5.4-mini'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-5.4-nano'; Label = 'gpt-5.4-nano'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-5.3-codex'; Label = 'gpt-5.3-codex'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-5.2'; Label = 'gpt-5.2'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-5.1'; Label = 'gpt-5.1'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-5'; Label = 'gpt-5'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-5-mini'; Label = 'gpt-5-mini'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-5-nano'; Label = 'gpt-5-nano'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-4.1'; Label = 'gpt-4.1'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-4.1-mini'; Label = 'gpt-4.1-mini'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-4.1-nano'; Label = 'gpt-4.1-nano'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-4o'; Label = 'gpt-4o'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-4o-mini'; Label = 'gpt-4o-mini'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'o1'; Label = 'o1'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'o1-preview'; Label = 'o1-preview'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'o1-mini'; Label = 'o1-mini'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'o3-mini'; Label = 'o3-mini'; Reasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'chat'; Label = 'chat (gpt-4.1-mini)'; Reasoning = @(); DefaultReasoning = $null }
+)
+$script:Model = $script:DefaultModel
+$script:ModelDisplayMap = @{}
+foreach ($modelOption in $script:ModelOptions) {
+    $script:ModelDisplayMap[$modelOption.Label] = $modelOption
+}
 $script:ReasoningEffortOptions = @('minimal', 'low', 'medium', 'high', 'xhigh')
 $script:DefaultReasoningEffort = 'medium'
 $script:EndpointBaseUrl = 'https://azureaiapi.cloud.unc.edu/openai/v1'
@@ -45,6 +72,7 @@ $script:KeyTextBox = $null
 $script:RecommendationWorkspacePathLabel = $null
 $script:WorkspacePathLabel = $null
 $script:PlaintextConfigCheckBox = $null
+$script:ModelComboBox = $null
 $script:ReasoningEffortComboBox = $null
 $script:LaunchAfterSetupCheckBox = $null
 $script:CodexStatusLabel = $null
@@ -192,15 +220,85 @@ function Confirm-CodexInstallDuration {
     return Confirm-Action -Message $message
 }
 
+function Get-ModelOptionByDeployment {
+    param([Parameter(Mandatory = $true)][string]$Deployment)
+
+    foreach ($modelOption in $script:ModelOptions) {
+        if ($modelOption.Deployment -eq $Deployment) {
+            return $modelOption
+        }
+    }
+
+    return $script:ModelOptions[0]
+}
+
+function Get-SelectedModelOption {
+    if ($script:ModelComboBox -ne $null -and $script:ModelComboBox.SelectedItem) {
+        $label = [string]$script:ModelComboBox.SelectedItem
+        if ($script:ModelDisplayMap.ContainsKey($label)) {
+            return $script:ModelDisplayMap[$label]
+        }
+    }
+
+    return Get-ModelOptionByDeployment -Deployment $script:DefaultModel
+}
+
+function Get-SelectedModelDeployment {
+    return (Get-SelectedModelOption).Deployment
+}
+
+function Update-ReasoningOptionsForSelectedModel {
+    if ($script:ReasoningEffortComboBox -eq $null) {
+        return
+    }
+
+    $modelOption = Get-SelectedModelOption
+    $script:ReasoningEffortComboBox.Items.Clear()
+
+    if ($modelOption.Reasoning.Count -gt 0) {
+        foreach ($effort in $modelOption.Reasoning) {
+            [void]$script:ReasoningEffortComboBox.Items.Add($effort)
+        }
+        $defaultEffort = if ($modelOption.DefaultReasoning) { $modelOption.DefaultReasoning } else { $modelOption.Reasoning[0] }
+        $script:ReasoningEffortComboBox.SelectedItem = $defaultEffort
+        $script:ReasoningEffortComboBox.Enabled = $true
+    } else {
+        [void]$script:ReasoningEffortComboBox.Items.Add('model default')
+        $script:ReasoningEffortComboBox.SelectedItem = 'model default'
+        $script:ReasoningEffortComboBox.Enabled = $false
+    }
+}
+
 function Get-SelectedReasoningEffort {
+    $modelOption = Get-SelectedModelOption
+    if ($modelOption.Reasoning.Count -eq 0) {
+        return $null
+    }
+
     if ($script:ReasoningEffortComboBox -ne $null -and $script:ReasoningEffortComboBox.SelectedItem) {
         $value = [string]$script:ReasoningEffortComboBox.SelectedItem
-        if ($script:ReasoningEffortOptions -contains $value) {
+        if ($modelOption.Reasoning -contains $value) {
             return $value
         }
     }
 
-    return $script:DefaultReasoningEffort
+    return $modelOption.DefaultReasoning
+}
+
+function Get-ConfiguredModel {
+    try {
+        if (Test-Path -LiteralPath $script:ConfigPath) {
+            $content = Get-Content -Path $script:ConfigPath -Raw -ErrorAction Stop
+            $match = [regex]::Match($content, '(?m)^\s*model\s*=\s*"([^"]+)"')
+            if ($match.Success) {
+                return $match.Groups[1].Value
+            }
+        }
+    } catch {
+        # Fall back to the selected/default model if config cannot be read.
+    }
+
+    return Get-SelectedModelDeployment
 }
 
 function Get-ConfiguredReasoningEffort {
@@ -216,7 +314,12 @@ function Get-ConfiguredReasoningEffort {
         # Fall back to the selected/default effort if config cannot be read.
     }
 
-    return Get-SelectedReasoningEffort
+    $selected = Get-SelectedReasoningEffort
+    if ($selected) {
+        return $selected
+    }
+
+    return 'model default'
 }
 
 function Invoke-GuiAction {
@@ -625,41 +728,41 @@ function Write-CodexConfig {
     )
 
     Backup-CodexConfig | Out-Null
+    $selectedModel = Get-SelectedModelDeployment
+    $script:Model = $selectedModel
+    $quotedModel = ConvertTo-TomlString -Value $selectedModel
     $reasoningEffort = Get-SelectedReasoningEffort
+    $configLines = @(
+        ('model = "{0}"' -f $quotedModel),
+        'model_provider = "azure"'
+    )
+
+    if ($reasoningEffort) {
+        $configLines += ('model_reasoning_effort = "{0}"' -f (ConvertTo-TomlString -Value $reasoningEffort))
+    }
+
+    $configLines += ''
+    $configLines += '[model_providers.azure]'
+    $configLines += 'name = "Azure OpenAI"'
+    $configLines += ('base_url = "{0}"' -f (ConvertTo-TomlString -Value $script:EndpointBaseUrl))
 
     if ($UsePlaintextConfig) {
         $quotedKey = ConvertTo-TomlString -Value $ApiKey
-        $content = @"
-model = "$script:Model"
-model_provider = "azure"
-model_reasoning_effort = "$reasoningEffort"
-
-[model_providers.azure]
-name = "Azure OpenAI"
-base_url = "$script:EndpointBaseUrl"
-experimental_bearer_token = "$quotedKey"
-wire_api = "responses"
-"@
+        $configLines += ('experimental_bearer_token = "{0}"' -f $quotedKey)
         Write-Log 'Writing Codex config with plaintext bearer token fallback.'
     } else {
         Save-ApiKeyToUserEnvironment -ApiKey $ApiKey
-        $content = @"
-model = "$script:Model"
-model_provider = "azure"
-model_reasoning_effort = "$reasoningEffort"
-
-[model_providers.azure]
-name = "Azure OpenAI"
-base_url = "$script:EndpointBaseUrl"
-env_key = "$script:EnvKey"
-wire_api = "responses"
-"@
+        $configLines += ('env_key = "{0}"' -f (ConvertTo-TomlString -Value $script:EnvKey))
         Write-Log 'Writing Codex config with environment variable authentication.'
     }
 
+    $configLines += 'wire_api = "responses"'
+    $content = ($configLines -join [Environment]::NewLine) + [Environment]::NewLine
+
     Ensure-Directory -Path $script:CodexHome
     Set-Content -Path $script:ConfigPath -Value $content -Encoding UTF8
-    Write-Log "Wrote Codex config at $script:ConfigPath with reasoning effort $reasoningEffort."
+    $reasoningLabel = if ($reasoningEffort) { $reasoningEffort } else { 'model default' }
+    Write-Log "Wrote Codex config at $script:ConfigPath for $selectedModel with reasoning $reasoningLabel."
 }
 
 function Get-CurrentApiKey {
@@ -708,10 +811,11 @@ function Clear-ApiKeyInput {
 function Test-UncEndpoint {
     param([Parameter(Mandatory = $true)][string]$ApiKey)
 
-    Write-Log 'Testing UNC Azure OpenAI endpoint.'
+    $selectedModel = Get-SelectedModelDeployment
+    Write-Log "Testing UNC Azure OpenAI endpoint with $selectedModel."
 
     $payload = @{
-        model = $script:Model
+        model = $selectedModel
         input = 'Reply exactly: UNC Codex setup OK'
         store = $false
         background = $false
@@ -760,6 +864,7 @@ function Save-SetupReceipt {
     )
 
     Ensure-Directory -Path $script:SupportDirectory
+    $configuredModel = Get-ConfiguredModel
     $reasoningEffort = Get-ConfiguredReasoningEffort
 
     $lines = @(
@@ -771,6 +876,7 @@ function Save-SetupReceipt {
         ('Codex home source: {0}' -f $script:CodexHomeSource),
         ('Config path: {0}' -f $script:ConfigPath),
         ('Codex workspace: {0}' -f $(if ($script:WorkspacePath) { $script:WorkspacePath } else { Get-CodexWorkspacePath })),
+        ('Model: {0}' -f $configuredModel),
         ('Reasoning effort: {0}' -f $reasoningEffort),
         ('Environment key: {0}' -f $script:EnvKey),
         ('Endpoint test: {0}' -f $(if ($EndpointSucceeded) { 'succeeded' } else { 'failed or not run' })),
@@ -851,6 +957,7 @@ function Save-SupportReport {
     $detection = Get-CodexDetection
     $envSet = [Environment]::GetEnvironmentVariable($script:EnvKey, 'User')
     $configExists = Test-Path -LiteralPath $script:ConfigPath
+    $configuredModel = Get-ConfiguredModel
     $reasoningEffort = Get-ConfiguredReasoningEffort
     $reportPath = Join-Path ([Environment]::GetFolderPath('Desktop')) 'AI-UNC-Codex-Installer-Support-Report.txt'
 
@@ -868,6 +975,7 @@ function Save-SupportReport {
         ('Codex home source: {0}' -f $script:CodexHomeSource),
         ('Config path: {0}' -f $script:ConfigPath),
         ('Codex workspace: {0}' -f $(if ($script:WorkspacePath) { $script:WorkspacePath } else { Get-CodexWorkspacePath })),
+        ('Model: {0}' -f $configuredModel),
         ('Reasoning effort: {0}' -f $reasoningEffort),
         ('Config exists: {0}' -f $(if ($configExists) { 'yes' } else { 'no' })),
         ('User environment variable set: {0}' -f $(if ($envSet) { 'yes' } else { 'no' })),
@@ -1030,14 +1138,14 @@ function Set-AdvancedVisible {
 
     if ($Visible) {
         $script:AdvancedToggleButton.Text = 'Hide Advanced Options'
-        $script:LogLabel.Location = New-Object System.Drawing.Point(22, 505)
-        $script:LogBox.Location = New-Object System.Drawing.Point(22, 530)
-        $script:LogBox.Size = New-Object System.Drawing.Size(780, 110)
+        $script:LogLabel.Location = New-Object System.Drawing.Point(22, 545)
+        $script:LogBox.Location = New-Object System.Drawing.Point(22, 570)
+        $script:LogBox.Size = New-Object System.Drawing.Size(780, 98)
     } else {
         $script:AdvancedToggleButton.Text = 'Show Advanced Options'
-        $script:LogLabel.Location = New-Object System.Drawing.Point(22, 367)
-        $script:LogBox.Location = New-Object System.Drawing.Point(22, 392)
-        $script:LogBox.Size = New-Object System.Drawing.Size(780, 248)
+        $script:LogLabel.Location = New-Object System.Drawing.Point(22, 407)
+        $script:LogBox.Location = New-Object System.Drawing.Point(22, 432)
+        $script:LogBox.Size = New-Object System.Drawing.Size(780, 236)
     }
 }
 
@@ -1046,8 +1154,8 @@ function Build-Gui {
 
     $script:Form = New-Object System.Windows.Forms.Form
     $script:Form.Text = 'AI @ UNC Codex Installer for Windows'
-    $script:Form.Size = New-Object System.Drawing.Size(840, 730)
-    $script:Form.MinimumSize = New-Object System.Drawing.Size(840, 730)
+    $script:Form.Size = New-Object System.Drawing.Size(840, 760)
+    $script:Form.MinimumSize = New-Object System.Drawing.Size(840, 760)
     $script:Form.StartPosition = 'CenterScreen'
     $script:Form.Font = New-Object System.Drawing.Font('Segoe UI', 9)
 
@@ -1096,7 +1204,7 @@ function Build-Gui {
     $recommendationBox = New-Object System.Windows.Forms.GroupBox
     $recommendationBox.Text = 'Recommended setup'
     $recommendationBox.Location = New-Object System.Drawing.Point(22, 150)
-    $recommendationBox.Size = New-Object System.Drawing.Size(780, 165)
+    $recommendationBox.Size = New-Object System.Drawing.Size(780, 205)
     $script:Form.Controls.Add($recommendationBox)
 
     $recommendationText = New-Object System.Windows.Forms.Label
@@ -1106,14 +1214,46 @@ function Build-Gui {
     $recommendationText.ForeColor = [System.Drawing.Color]::DimGray
     $recommendationBox.Controls.Add($recommendationText)
 
+    $modelLabel = New-Object System.Windows.Forms.Label
+    $modelLabel.Text = 'Model:'
+    $modelLabel.Location = New-Object System.Drawing.Point(16, 76)
+    $modelLabel.Size = New-Object System.Drawing.Size(74, 22)
+    $recommendationBox.Controls.Add($modelLabel)
+
+    $script:ModelComboBox = New-Object System.Windows.Forms.ComboBox
+    $script:ModelComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+    $script:ModelComboBox.Location = New-Object System.Drawing.Point(92, 73)
+    $script:ModelComboBox.Size = New-Object System.Drawing.Size(208, 24)
+    foreach ($modelOption in $script:ModelOptions) {
+        [void]$script:ModelComboBox.Items.Add($modelOption.Label)
+    }
+    $script:ModelComboBox.SelectedItem = (Get-ModelOptionByDeployment -Deployment $script:DefaultModel).Label
+    $script:ModelComboBox.Add_SelectedIndexChanged({
+        Update-ReasoningOptionsForSelectedModel
+    })
+    $recommendationBox.Controls.Add($script:ModelComboBox)
+
+    $reasoningLabel = New-Object System.Windows.Forms.Label
+    $reasoningLabel.Text = 'Reasoning:'
+    $reasoningLabel.Location = New-Object System.Drawing.Point(318, 76)
+    $reasoningLabel.Size = New-Object System.Drawing.Size(74, 22)
+    $recommendationBox.Controls.Add($reasoningLabel)
+
+    $script:ReasoningEffortComboBox = New-Object System.Windows.Forms.ComboBox
+    $script:ReasoningEffortComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+    $script:ReasoningEffortComboBox.Location = New-Object System.Drawing.Point(396, 73)
+    $script:ReasoningEffortComboBox.Size = New-Object System.Drawing.Size(132, 24)
+    $recommendationBox.Controls.Add($script:ReasoningEffortComboBox)
+    Update-ReasoningOptionsForSelectedModel
+
     $workspaceCaption = New-Object System.Windows.Forms.Label
     $workspaceCaption.Text = 'Workspace:'
-    $workspaceCaption.Location = New-Object System.Drawing.Point(16, 72)
+    $workspaceCaption.Location = New-Object System.Drawing.Point(16, 110)
     $workspaceCaption.Size = New-Object System.Drawing.Size(78, 22)
     $recommendationBox.Controls.Add($workspaceCaption)
 
     $script:RecommendationWorkspacePathLabel = New-Object System.Windows.Forms.Label
-    $script:RecommendationWorkspacePathLabel.Location = New-Object System.Drawing.Point(92, 72)
+    $script:RecommendationWorkspacePathLabel.Location = New-Object System.Drawing.Point(92, 110)
     $script:RecommendationWorkspacePathLabel.Size = New-Object System.Drawing.Size(435, 22)
     $script:RecommendationWorkspacePathLabel.ForeColor = [System.Drawing.Color]::DimGray
     $script:RecommendationWorkspacePathLabel.AutoEllipsis = $true
@@ -1122,30 +1262,14 @@ function Build-Gui {
 
     $script:LaunchAfterSetupCheckBox = New-Object System.Windows.Forms.CheckBox
     $script:LaunchAfterSetupCheckBox.Text = 'Open Codex after setup when detected'
-    $script:LaunchAfterSetupCheckBox.Location = New-Object System.Drawing.Point(18, 100)
+    $script:LaunchAfterSetupCheckBox.Location = New-Object System.Drawing.Point(18, 140)
     $script:LaunchAfterSetupCheckBox.Size = New-Object System.Drawing.Size(258, 24)
     $script:LaunchAfterSetupCheckBox.Checked = $true
     $recommendationBox.Controls.Add($script:LaunchAfterSetupCheckBox)
 
-    $reasoningLabel = New-Object System.Windows.Forms.Label
-    $reasoningLabel.Text = 'Reasoning:'
-    $reasoningLabel.Location = New-Object System.Drawing.Point(292, 101)
-    $reasoningLabel.Size = New-Object System.Drawing.Size(74, 22)
-    $recommendationBox.Controls.Add($reasoningLabel)
-
-    $script:ReasoningEffortComboBox = New-Object System.Windows.Forms.ComboBox
-    $script:ReasoningEffortComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-    $script:ReasoningEffortComboBox.Location = New-Object System.Drawing.Point(367, 98)
-    $script:ReasoningEffortComboBox.Size = New-Object System.Drawing.Size(112, 24)
-    foreach ($effort in $script:ReasoningEffortOptions) {
-        [void]$script:ReasoningEffortComboBox.Items.Add($effort)
-    }
-    $script:ReasoningEffortComboBox.SelectedItem = $script:DefaultReasoningEffort
-    $recommendationBox.Controls.Add($script:ReasoningEffortComboBox)
-
     $script:CodexStatusLabel = New-Object System.Windows.Forms.Label
     $script:CodexStatusLabel.Text = 'Codex status: checking...'
-    $script:CodexStatusLabel.Location = New-Object System.Drawing.Point(18, 128)
+    $script:CodexStatusLabel.Location = New-Object System.Drawing.Point(18, 170)
     $script:CodexStatusLabel.Size = New-Object System.Drawing.Size(520, 22)
     $script:CodexStatusLabel.ForeColor = [System.Drawing.Color]::DimGray
     $recommendationBox.Controls.Add($script:CodexStatusLabel)
@@ -1158,20 +1282,20 @@ function Build-Gui {
     $fullSetup.UseVisualStyleBackColor = $false
     $fullSetup.Add_Click({ Invoke-GuiAction { Run-FullSetup } })
 
-    $script:OpenDesktopButton = New-Button -Text 'Open Codex Desktop' -X 555 -Y 88 -Width 205 -Height 28 -Parent $recommendationBox
+    $script:OpenDesktopButton = New-Button -Text 'Open Codex Desktop' -X 555 -Y 95 -Width 205 -Height 28 -Parent $recommendationBox
     $script:OpenDesktopButton.Add_Click({ Invoke-GuiAction { Open-CodexDesktop } })
 
-    $script:OpenCliButton = New-Button -Text 'Open Codex CLI' -X 555 -Y 122 -Width 205 -Height 28 -Parent $recommendationBox
+    $script:OpenCliButton = New-Button -Text 'Open Codex CLI' -X 555 -Y 132 -Width 205 -Height 28 -Parent $recommendationBox
     $script:OpenCliButton.Add_Click({ Invoke-GuiAction { Open-CodexCli } })
 
-    $script:AdvancedToggleButton = New-Button -Text 'Show Advanced Options' -X 22 -Y 329 -Width 180 -Height 30 -RegisterAction $false
+    $script:AdvancedToggleButton = New-Button -Text 'Show Advanced Options' -X 22 -Y 369 -Width 180 -Height 30 -RegisterAction $false
     $script:AdvancedToggleButton.Add_Click({
         Set-AdvancedVisible -Visible (-not $script:AdvancedGroupBox.Visible)
     })
 
     $script:AdvancedGroupBox = New-Object System.Windows.Forms.GroupBox
     $script:AdvancedGroupBox.Text = 'Advanced and troubleshooting'
-    $script:AdvancedGroupBox.Location = New-Object System.Drawing.Point(22, 367)
+    $script:AdvancedGroupBox.Location = New-Object System.Drawing.Point(22, 407)
     $script:AdvancedGroupBox.Size = New-Object System.Drawing.Size(780, 126)
     $script:AdvancedGroupBox.Visible = $false
     $script:Form.Controls.Add($script:AdvancedGroupBox)
@@ -1230,13 +1354,13 @@ function Build-Gui {
 
     $script:LogLabel = New-Object System.Windows.Forms.Label
     $script:LogLabel.Text = 'Setup log'
-    $script:LogLabel.Location = New-Object System.Drawing.Point(22, 367)
+    $script:LogLabel.Location = New-Object System.Drawing.Point(22, 407)
     $script:LogLabel.Size = New-Object System.Drawing.Size(160, 22)
     $script:Form.Controls.Add($script:LogLabel)
 
     $script:LogBox = New-Object System.Windows.Forms.TextBox
-    $script:LogBox.Location = New-Object System.Drawing.Point(22, 392)
-    $script:LogBox.Size = New-Object System.Drawing.Size(780, 248)
+    $script:LogBox.Location = New-Object System.Drawing.Point(22, 432)
+    $script:LogBox.Size = New-Object System.Drawing.Size(780, 236)
     $script:LogBox.Multiline = $true
     $script:LogBox.ScrollBars = 'Vertical'
     $script:LogBox.ReadOnly = $true
@@ -1246,7 +1370,7 @@ function Build-Gui {
 
     $footer = New-Object System.Windows.Forms.Label
     $footer.Text = 'Tip: Existing config.toml is backed up first. CODEX_HOME is respected when set; otherwise config/support files use %USERPROFILE%\.codex.'
-    $footer.Location = New-Object System.Drawing.Point(22, 658)
+    $footer.Location = New-Object System.Drawing.Point(22, 688)
     $footer.Size = New-Object System.Drawing.Size(780, 24)
     $footer.ForeColor = [System.Drawing.Color]::DimGray
     $footer.AutoEllipsis = $true

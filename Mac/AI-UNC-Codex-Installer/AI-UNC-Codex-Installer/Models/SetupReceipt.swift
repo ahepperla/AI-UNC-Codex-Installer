@@ -11,6 +11,7 @@ struct SetupReceipt: Sendable {
     var endpointTestTime: Date?
     var endpointTestStatus: String
     var workspacePath: String
+    var model: String
     var reasoningEffort: String
     var codexDesktopPath: String?
     var codexCLIPath: String?
@@ -33,6 +34,7 @@ struct SetupReceipt: Sendable {
             "Endpoint test: \(endpointTestStatus)",
             "Endpoint test time: \(endpointTestTime.map { formatter.string(from: $0) } ?? "not run")",
             "API key storage: \(storageMode.label)",
+            "Model: \(model)",
             "Reasoning effort: \(reasoningEffort)",
             "Codex desktop app: \(codexDesktopPath ?? "not detected")",
             "Codex CLI: \(codexCLIPath ?? "not detected")",

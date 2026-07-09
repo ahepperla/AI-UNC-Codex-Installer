@@ -32,8 +32,9 @@ struct APIKeyView: View {
                 Divider()
                     .padding(.vertical, 4)
 
-                ReasoningEffortDropdown(
-                    selection: $state.selectedReasoningEffort,
+                ModelAndReasoningControls(
+                    selectedModel: $state.selectedModel,
+                    selectedReasoningEffort: $state.selectedReasoningEffort,
                     isDisabled: state.isBusy
                 )
             }

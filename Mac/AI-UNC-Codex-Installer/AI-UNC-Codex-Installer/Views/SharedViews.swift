@@ -272,32 +272,62 @@ struct SectionHeader: View {
     }
 }
 
-struct ReasoningEffortDropdown: View {
-    @Binding var selection: CodexReasoningEffort
+struct ModelAndReasoningControls: View {
+    @Binding var selectedModel: CodexModel
+    @Binding var selectedReasoningEffort: CodexReasoningEffort?
     var isDisabled = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text("Reasoning effort")
+                Text("Model")
                     .font(.headline)
+                    .frame(width: 110, alignment: .leading)
 
-                Picker("Reasoning effort", selection: $selection) {
-                    ForEach(CodexReasoningEffort.allCases) { effort in
-                        Text(effort.label).tag(effort)
+                Picker("Model", selection: $selectedModel) {
+                    ForEach(CodexModel.approvedCodexModels) { model in
+                        Text(model.displayLabel).tag(model)
                     }
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
-                .frame(width: 150, alignment: .leading)
+                .frame(width: 250, alignment: .leading)
                 .disabled(isDisabled)
             }
 
-            Text("\(selection.label): \(selection.helpText)")
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text("Reasoning")
+                    .font(.headline)
+                    .frame(width: 110, alignment: .leading)
+
+                if selectedModel.supportsReasoningSelection {
+                    Picker("Reasoning", selection: $selectedReasoningEffort) {
+                        ForEach(selectedModel.supportedReasoningEfforts) { effort in
+                            Text(effort.label).tag(Optional(effort))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(width: 160, alignment: .leading)
+                    .disabled(isDisabled)
+                } else {
+                    Text("Model default")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Text(helpText)
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var helpText: String {
+        if let selectedReasoningEffort {
+            return "\(selectedModel.label): \(selectedReasoningEffort.label) reasoning. \(selectedReasoningEffort.helpText)"
+        }
+        return "\(selectedModel.label): Model default reasoning. \(selectedModel.reasoningHelpText)"
     }
 }
 

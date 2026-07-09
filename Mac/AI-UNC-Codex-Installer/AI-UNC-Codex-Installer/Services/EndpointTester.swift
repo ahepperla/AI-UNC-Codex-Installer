@@ -12,7 +12,7 @@ struct ConnectionTestResult: Identifiable, Equatable, Sendable {
 final class EndpointTester: @unchecked Sendable {
     let endpointURL = URL(string: "https://azureaiapi.cloud.unc.edu/openai/v1/responses")!
 
-    func test(apiKey: String?) async -> ConnectionTestResult {
+    func test(apiKey: String?, model: String = RecommendedConfig.uncCodex.recommendedModel) async -> ConnectionTestResult {
         guard let apiKey, !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return ConnectionTestResult(
                 success: false,
@@ -30,7 +30,7 @@ final class EndpointTester: @unchecked Sendable {
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
         let body: [String: Any] = [
-            "model": RecommendedConfig.uncCodex.recommendedModel,
+            "model": model,
             "input": "Reply exactly: UNC Codex setup OK",
             "store": false,
             "background": false

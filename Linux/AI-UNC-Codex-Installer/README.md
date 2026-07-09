@@ -2,12 +2,16 @@
 
 This is the plain terminal setup path for Linux systems such as an HPC cluster.
 
-It does three things:
+The script:
 
 - Prompts for the UNC Azure OpenAI API key.
-- Asks whether to use the default `medium` reasoning effort.
+- Asks which approved Codex model to use. Press Enter for `gpt-5.5 Recommended`.
+- Uses `medium` reasoning for `gpt-5.5` unless the user picks another value.
+- Uses model-default reasoning for alternate models and leaves `model_reasoning_effort` out of the config.
 - Writes `export UNC_AZURE_API_KEY=...` to `~/.bashrc`.
 - Writes the UNC Codex config to `$CODEX_HOME/config.toml`, or `~/.codex/config.toml` when `CODEX_HOME` is not set.
+
+Image, embedding, and audio deployments are intentionally not listed because they are not suitable Codex chat/code deployments.
 
 If a config already exists, the script backs it up before writing the UNC config. After updating `~/.bashrc`, the script loads it for the current setup session so the API key is available before the optional Codex CLI install runs.
 

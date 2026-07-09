@@ -49,9 +49,13 @@ struct ConfigWriteView: View {
         if state.usePlaintextFallback {
             return ConfigManager.plaintextConfig(
                 apiKey: "<USER_KEY>",
+                model: state.selectedModel.id,
                 reasoningEffort: state.selectedReasoningEffort
             )
         }
-        return ConfigManager.keychainConfig(reasoningEffort: state.selectedReasoningEffort)
+        return ConfigManager.keychainConfig(
+            model: state.selectedModel.id,
+            reasoningEffort: state.selectedReasoningEffort
+        )
     }
 }

@@ -92,11 +92,11 @@ struct DashboardView: View {
                 title: "Current model",
                 value: state.dashboardSnapshot.configSummary.model ?? "missing",
                 systemImage: "cpu",
-                passed: state.dashboardSnapshot.configSummary.model == RecommendedConfig.uncCodex.recommendedModel
+                passed: CodexModel.approvedModel(id: state.dashboardSnapshot.configSummary.model) != nil
             )
             InfoRow(
                 title: "Reasoning effort",
-                value: state.dashboardSnapshot.configSummary.reasoningEffort ?? "missing",
+                value: state.dashboardSnapshot.configSummary.reasoningEffort ?? "model default",
                 systemImage: "brain.head.profile",
                 passed: reasoningEffortIsValid
             )
@@ -238,7 +238,7 @@ struct DashboardView: View {
     private var recommendedConfiguration: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Recommended Configuration")
+                Text("UNC Configuration")
                     .font(.title2.weight(.semibold))
                 Spacer()
                 StatusPill(
@@ -249,7 +249,7 @@ struct DashboardView: View {
 
             switch state.dashboardSnapshot.recommendedStatus {
             case .upToDate:
-                Label("Codex config matches the recommended UNC settings.", systemImage: "checkmark.seal.fill")
+                Label("Codex config uses approved UNC settings.", systemImage: "checkmark.seal.fill")
                     .foregroundStyle(.secondary)
 
             case .missingConfig:
@@ -295,9 +295,16 @@ struct DashboardView: View {
     }
 
     private var reasoningEffortIsValid: Bool {
-        guard let value = state.dashboardSnapshot.configSummary.reasoningEffort else {
+        let summary = state.dashboardSnapshot.configSummary
+        guard let model = CodexModel.approvedModel(id: summary.model) else {
             return false
         }
-        return CodexReasoningEffort(rawValue: value) != nil
+        guard let value = summary.reasoningEffort else {
+            return !model.supportsReasoningSelection
+        }
+        guard let effort = CodexReasoningEffort(rawValue: value) else {
+            return false
+        }
+        return model.supportedReasoningEfforts.isEmpty ? false : model.supportedReasoningEfforts.contains(effort)
     }
 }

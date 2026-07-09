@@ -40,10 +40,73 @@ enum CodexReasoningEffort: String, CaseIterable, Identifiable, Codable, Sendable
     }
 }
 
+struct CodexModel: Identifiable, Hashable, Codable, Sendable {
+    var id: String
+    var label: String
+    var deploymentLocality: String
+    var apiAvailability: String
+    var isRecommended: Bool = false
+    var supportedReasoningEfforts: [CodexReasoningEffort] = []
+    var defaultReasoningEffort: CodexReasoningEffort?
+
+    var displayLabel: String {
+        isRecommended ? "\(label) Recommended" : label
+    }
+
+    var supportsReasoningSelection: Bool {
+        !supportedReasoningEfforts.isEmpty
+    }
+
+    var reasoningHelpText: String {
+        if supportsReasoningSelection {
+            return "Choose how much time Codex spends thinking for this model."
+        }
+        return "Uses the model default. This avoids writing an unsupported reasoning option."
+    }
+
+    static let recommended = CodexModel(
+        id: "gpt-5.5",
+        label: "gpt-5.5",
+        deploymentLocality: "US Data Zone",
+        apiAvailability: "pre-v1, v1",
+        isRecommended: true,
+        supportedReasoningEfforts: CodexReasoningEffort.allCases,
+        defaultReasoningEffort: .medium
+    )
+
+    static let approvedCodexModels: [CodexModel] = [
+        .recommended,
+        CodexModel(id: "gpt-5.4", label: "gpt-5.4", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "gpt-5.4-mini", label: "gpt-5.4-mini", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "gpt-5.4-nano", label: "gpt-5.4-nano", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "gpt-5.3-codex", label: "gpt-5.3-codex", deploymentLocality: "US Data Zone", apiAvailability: "v1"),
+        CodexModel(id: "gpt-5.2", label: "gpt-5.2", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "gpt-5.1", label: "gpt-5.1", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "gpt-5", label: "gpt-5", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "gpt-5-mini", label: "gpt-5-mini", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "gpt-5-nano", label: "gpt-5-nano", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "gpt-4.1", label: "gpt-4.1", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "gpt-4.1-mini", label: "gpt-4.1-mini", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "gpt-4.1-nano", label: "gpt-4.1-nano", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "gpt-4o", label: "gpt-4o", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "gpt-4o-mini", label: "gpt-4o-mini", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "o1", label: "o1", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "o1-preview", label: "o1-preview", deploymentLocality: "regional", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "o1-mini", label: "o1-mini", deploymentLocality: "regional", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "o3-mini", label: "o3-mini", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
+        CodexModel(id: "chat", label: "chat (gpt-4.1-mini)", deploymentLocality: "regional", apiAvailability: "pre-v1, v1")
+    ]
+
+    static func approvedModel(id: String?) -> CodexModel? {
+        guard let id else { return nil }
+        return approvedCodexModels.first { $0.id == id }
+    }
+}
+
 struct RecommendedConfig: Codable, Equatable, Sendable {
     var recommendedModel: String
     var recommendedProvider: String
-    var reasoningEffort: CodexReasoningEffort
+    var reasoningEffort: CodexReasoningEffort?
     var endpoint: String
     var wireAPI: String
 
@@ -56,7 +119,7 @@ struct RecommendedConfig: Codable, Equatable, Sendable {
     }
 
     static let uncCodex = RecommendedConfig(
-        recommendedModel: "gpt-5.5",
+        recommendedModel: CodexModel.recommended.id,
         recommendedProvider: "azure",
         reasoningEffort: .medium,
         endpoint: "https://azureaiapi.cloud.unc.edu/openai/v1",
@@ -91,8 +154,12 @@ struct ConfigSummary: Equatable, Sendable {
 
     func mismatches(from recommended: RecommendedConfig) -> [String] {
         var mismatches: [String] = []
-        if model != recommended.recommendedModel {
-            mismatches.append("Model is \(model ?? "missing"), expected \(recommended.recommendedModel).")
+        guard let approvedModel = CodexModel.approvedModel(id: model) else {
+            mismatches.append("Model is \(model ?? "missing"), expected an approved UNC Codex model.")
+            return mismatches
+        }
+        if !approvedModel.isRecommended {
+            // Approved alternatives are valid; keep the dashboard quiet for intentional choices.
         }
         if provider != recommended.recommendedProvider {
             mismatches.append("Provider is \(provider ?? "missing"), expected \(recommended.recommendedProvider).")
@@ -101,9 +168,16 @@ struct ConfigSummary: Equatable, Sendable {
             if CodexReasoningEffort(rawValue: reasoningEffort) == nil {
                 let validValues = CodexReasoningEffort.allCases.map(\.rawValue).joined(separator: ", ")
                 mismatches.append("Reasoning effort is \(reasoningEffort), expected one of \(validValues).")
+            } else if !approvedModel.supportedReasoningEfforts.isEmpty,
+                      let parsedEffort = CodexReasoningEffort(rawValue: reasoningEffort),
+                      !approvedModel.supportedReasoningEfforts.contains(parsedEffort) {
+                let validValues = approvedModel.supportedReasoningEfforts.map(\.rawValue).joined(separator: ", ")
+                mismatches.append("Reasoning effort is \(reasoningEffort), expected one of \(validValues) for \(approvedModel.id).")
+            } else if approvedModel.supportedReasoningEfforts.isEmpty {
+                mismatches.append("Reasoning effort is set for \(approvedModel.id), which should use the model default.")
             }
-        } else {
-            mismatches.append("Reasoning effort is missing.")
+        } else if approvedModel.isRecommended {
+            mismatches.append("Reasoning effort is missing for \(approvedModel.id).")
         }
         if endpoint != recommended.endpoint {
             mismatches.append("Endpoint is \(endpoint ?? "missing"), expected \(recommended.endpoint).")
