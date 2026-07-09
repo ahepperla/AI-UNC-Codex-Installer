@@ -29,13 +29,9 @@ The platform folders use the same `AI-UNC-Codex-Installer` naming scheme. The Ma
 
 ### Mac
 
-Open the Xcode project:
+Download `AI-UNC-Codex-Installer-AppleSilicon.zip` from Releases. Unzip it, open `AI @ UNC Codex Installer.app`, paste the UNC Azure OpenAI API key, and click `Run Recommended Setup`.
 
-```text
-Mac/AI-UNC-Codex-Installer/AI-UNC-Codex-Installer.xcodeproj
-```
-
-Select the `AI @ UNC Codex Installer` scheme, then build and run.
+The Mac release is for Apple Silicon Macs. Developers who want to build from source can open `Mac/AI-UNC-Codex-Installer/AI-UNC-Codex-Installer.xcodeproj`.
 
 ### Windows
 
@@ -88,6 +84,8 @@ The API key is not written to `config.toml` in the normal setup path.
 The Mac app has a plaintext fallback for support cases, but it should not be the default.
 
 ## Distribution
+
+Do not commit local builds, zips, or DerivedData output to the repository. Use GitHub Releases or an internal UNC channel for packaged test builds.
 
 Current local package names:
 
