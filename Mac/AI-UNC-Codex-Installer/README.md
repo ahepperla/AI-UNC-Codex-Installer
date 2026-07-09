@@ -2,7 +2,11 @@
 
 This is the macOS version of the UNC Codex setup tool. It is a native SwiftUI app for macOS 14 or newer.
 
-## Build And Run
+## Run The Release
+
+Download `AI-UNC-Codex-Installer-AppleSilicon.zip` from Releases, unzip it, and open `AI @ UNC Codex Installer.app`.
+
+## Build From Source
 
 1. Open `AI-UNC-Codex-Installer.xcodeproj`.
 2. Select the `AI @ UNC Codex Installer` scheme.
