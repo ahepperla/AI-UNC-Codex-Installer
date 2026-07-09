@@ -35,30 +35,18 @@ The Mac release is for Apple Silicon Macs. Developers who want to build from sou
 
 ### Windows
 
-Open:
-
-```text
-Windows/AI-UNC-Codex-Installer
-```
-
-Double-click `Run AI UNC Codex Installer.cmd`, paste the UNC Azure OpenAI API key, and click `Run Recommended Setup`.
+Download `AI-UNC-Codex-Installer-Windows.zip` from Releases. Unzip it, double-click `Run AI UNC Codex Installer.cmd`, paste the UNC Azure OpenAI API key, and click `Run Recommended Setup`.
 
 ### Linux/HPC
 
-Open:
-
-```text
-Linux/AI-UNC-Codex-Installer
-```
-
-Run:
+Download `AI-UNC-Codex-Installer-Linux-HPC.zip` from Releases. Unzip it on the cluster, then run:
 
 ```bash
 chmod +x setup-codex-unc-cli.sh
 ./setup-codex-unc-cli.sh
 ```
 
-The script prompts for the UNC Azure OpenAI API key, writes the Codex config, updates `~/.bashrc`, and then asks whether to install Codex CLI.
+The script prompts for the UNC Azure OpenAI API key, lets the user keep the recommended model defaults, writes the Codex config, updates `~/.bashrc`, and then asks whether to install Codex CLI.
 
 ## What The Installers Do
 
