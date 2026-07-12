@@ -1,45 +1,45 @@
-# AI @ UNC Codex Installer
+# AI @ UNC ChatGPT Installer
 
-This repository contains the Mac, Windows, and Linux/HPC installers for setting up OpenAI Codex with UNC's Azure OpenAI-compatible endpoint.
+This repository contains the Mac, Windows, and Linux/HPC installers for setting up ChatGPT Desktop and Codex CLI with UNC's Azure OpenAI-compatible endpoint.
 
-The goal is simple: a novice user should be able to paste the UNC API key, run the recommended setup, and end with a working Codex config. The installers back up existing config files before writing anything new.
+The goal is simple: a novice user should be able to paste the UNC API key, run the recommended setup, and end with ChatGPT/Codex configured for UNC. The installers back up existing config files before writing anything new.
 
 ## Repository Layout
 
 ```text
 Mac/
-  AI-UNC-Codex-Installer/
+  AI-UNC-ChatGPT-Installer/
     README.md
-    AI-UNC-Codex-Installer.xcodeproj
-    AI-UNC-Codex-Installer/
+    AI-UNC-ChatGPT-Installer.xcodeproj
+    AI-UNC-ChatGPT-Installer/
 Windows/
-  AI-UNC-Codex-Installer/
+  AI-UNC-ChatGPT-Installer/
     README.md
-    AI-UNC-Codex-Installer.ps1
-    Run AI UNC Codex Installer.cmd
+    AI-UNC-ChatGPT-Installer.ps1
+    Run AI UNC ChatGPT Installer.cmd
 Linux/
-  AI-UNC-Codex-Installer/
+  AI-UNC-ChatGPT-Installer/
     README.md
     setup-codex-unc-cli.sh
 ```
 
-The platform folders use the same `AI-UNC-Codex-Installer` naming scheme. The Mac app is a native SwiftUI project, the Windows installer is a PowerShell GUI, and the Linux version is a plain Bash script for terminal-only environments.
+The platform folders use the same `AI-UNC-ChatGPT-Installer` naming scheme. The Mac app is a native SwiftUI project, the Windows installer is a PowerShell GUI, and the Linux version is a plain Bash script for terminal-only environments.
 
 ## Quick Start
 
 ### Mac
 
-Download `AI-UNC-Codex-Installer-AppleSilicon.zip` from Releases. Unzip it, open `AI @ UNC Codex Installer.app`, paste the UNC Azure OpenAI API key, and click `Run Recommended Setup`.
+Download `AI-UNC-ChatGPT-Installer-AppleSilicon.zip` from Releases. Unzip it, open `AI @ UNC ChatGPT Installer.app`, paste the UNC Azure OpenAI API key, and click `Run Recommended Setup`.
 
-The Mac release is for Apple Silicon Macs. Developers who want to build from source can open `Mac/AI-UNC-Codex-Installer/AI-UNC-Codex-Installer.xcodeproj`.
+The Mac release is for Apple Silicon Macs. Developers who want to build from source can open `Mac/AI-UNC-ChatGPT-Installer/AI-UNC-ChatGPT-Installer.xcodeproj`.
 
 ### Windows
 
-Download `AI-UNC-Codex-Installer-Windows.zip` from Releases. Unzip it, double-click `Run AI UNC Codex Installer.cmd`, paste the UNC Azure OpenAI API key, and click `Run Recommended Setup`.
+Download `AI-UNC-ChatGPT-Installer-Windows.zip` from Releases. Unzip it, double-click `Run AI UNC ChatGPT Installer.cmd`, paste the UNC Azure OpenAI API key, and click `Run Recommended Setup`.
 
 ### Linux/HPC
 
-Download `AI-UNC-Codex-Installer-Linux-HPC.zip` from Releases. Unzip it on the cluster, then run:
+Download `AI-UNC-ChatGPT-Installer-Linux-HPC.zip` from Releases. Unzip it on the cluster, then run:
 
 ```bash
 chmod +x setup-codex-unc-cli.sh
@@ -52,15 +52,18 @@ The script prompts for the UNC Azure OpenAI API key, lets the user keep the reco
 
 - Respect `CODEX_HOME` when it is set.
 - Use the platform default Codex home when `CODEX_HOME` is not set.
-- Create `Documents/Codex` as the default workspace.
+- Create `Documents/ChatGPT` as the default workspace for new Mac/Windows installs.
+- Keep using `Documents/Codex` when that workspace folder already exists.
 - Let advanced users choose a different workspace folder.
 - Default to `gpt-5.5` with `medium` reasoning.
 - Offer only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
 - Omit `model_reasoning_effort` for alternate models unless their supported values are known.
 - Back up an existing `config.toml` before writing the UNC config.
 - Test the UNC Responses API endpoint before marking setup complete.
-- Offer Codex install or launch actions only after configuration succeeds.
+- Offer ChatGPT Desktop and Codex CLI install or launch actions only after configuration succeeds.
 - Keep setup receipts and support diagnostics for troubleshooting.
+- Record the installer version/build date in receipts and support diagnostics.
+- Reset installer-created settings without deleting the workspace folder or user files.
 
 ## Security
 
@@ -78,15 +81,15 @@ Do not commit local builds, zips, or DerivedData output to the repository. Use G
 Current local package names:
 
 ```text
-AI-UNC-Codex-Installer-AppleSilicon.zip
-AI-UNC-Codex-Installer-Windows.zip
-AI-UNC-Codex-Installer-Linux-HPC.zip
+AI-UNC-ChatGPT-Installer-AppleSilicon.zip
+AI-UNC-ChatGPT-Installer-Windows.zip
+AI-UNC-ChatGPT-Installer-Linux-HPC.zip
 ```
 
 For wider Mac distribution, sign and notarize the app with an Apple Developer ID certificate. The app should not be sandboxed unless it is redesigned, because setup writes to the Codex home directory, LaunchAgents, and Keychain.
 
 ## Platform Docs
 
-- [Mac installer notes](Mac/AI-UNC-Codex-Installer/README.md)
-- [Windows installer notes](Windows/AI-UNC-Codex-Installer/README.md)
-- [Linux/HPC installer notes](Linux/AI-UNC-Codex-Installer/README.md)
+- [Mac installer notes](Mac/AI-UNC-ChatGPT-Installer/README.md)
+- [Windows installer notes](Windows/AI-UNC-ChatGPT-Installer/README.md)
+- [Linux/HPC installer notes](Linux/AI-UNC-ChatGPT-Installer/README.md)

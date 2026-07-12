@@ -1,0 +1,473 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		200000000000000000000001 /* AIUNCChatGPTInstallerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000001 /* AIUNCChatGPTInstallerApp.swift */; };
+		200000000000000000000002 /* RecommendedConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000002 /* RecommendedConfig.swift */; };
+		200000000000000000000003 /* DiagnosticResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000003 /* DiagnosticResult.swift */; };
+		200000000000000000000004 /* SetupState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000004 /* SetupState.swift */; };
+		200000000000000000000005 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000005 /* RootView.swift */; };
+		200000000000000000000006 /* SharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000006 /* SharedViews.swift */; };
+		200000000000000000000007 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000007 /* WelcomeView.swift */; };
+		200000000000000000000008 /* CodexDetectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000008 /* CodexDetectionView.swift */; };
+		200000000000000000000009 /* InstallCodexView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000009 /* InstallCodexView.swift */; };
+		20000000000000000000000A /* APIKeyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000000A /* APIKeyView.swift */; };
+		20000000000000000000000B /* ConfigBackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000000B /* ConfigBackupView.swift */; };
+		20000000000000000000000C /* ConfigWriteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000000C /* ConfigWriteView.swift */; };
+		20000000000000000000000D /* ConnectionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000000D /* ConnectionTestView.swift */; };
+		20000000000000000000000E /* FinishView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000000E /* FinishView.swift */; };
+		20000000000000000000000F /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000000F /* DashboardView.swift */; };
+		200000000000000000000010 /* DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000010 /* DiagnosticsView.swift */; };
+		200000000000000000000011 /* ProcessRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000011 /* ProcessRunner.swift */; };
+		200000000000000000000012 /* CodexLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000012 /* CodexLocator.swift */; };
+		200000000000000000000013 /* CodexInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000013 /* CodexInstaller.swift */; };
+		200000000000000000000014 /* ConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000014 /* ConfigManager.swift */; };
+		200000000000000000000015 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000015 /* KeychainManager.swift */; };
+		200000000000000000000016 /* LaunchAgentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000016 /* LaunchAgentManager.swift */; };
+		200000000000000000000017 /* EndpointTester.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000017 /* EndpointTester.swift */; };
+		200000000000000000000018 /* RecommendedConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000018 /* RecommendedConfigManager.swift */; };
+		200000000000000000000019 /* DiagnosticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000019 /* DiagnosticsManager.swift */; };
+		20000000000000000000001A /* AIToolConfigurator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000001A /* AIToolConfigurator.swift */; };
+		20000000000000000000001B /* AppCleanupManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000001D /* AppCleanupManager.swift */; };
+		20000000000000000000001C /* SetupReceipt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000001E /* SetupReceipt.swift */; };
+		20000000000000000000001D /* SupportReportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000001F /* SupportReportManager.swift */; };
+		20000000000000000000001E /* ResetEverythingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000020 /* ResetEverythingView.swift */; };
+		20000000000000000000001F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000021 /* Assets.xcassets */; };
+		200000000000000000000020 /* WorkspaceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000022 /* WorkspaceManager.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		100000000000000000000001 /* AIUNCChatGPTInstallerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIUNCChatGPTInstallerApp.swift; sourceTree = "<group>"; };
+		100000000000000000000002 /* RecommendedConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecommendedConfig.swift; sourceTree = "<group>"; };
+		100000000000000000000003 /* DiagnosticResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticResult.swift; sourceTree = "<group>"; };
+		100000000000000000000004 /* SetupState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupState.swift; sourceTree = "<group>"; };
+		100000000000000000000005 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		100000000000000000000006 /* SharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedViews.swift; sourceTree = "<group>"; };
+		100000000000000000000007 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		100000000000000000000008 /* CodexDetectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexDetectionView.swift; sourceTree = "<group>"; };
+		100000000000000000000009 /* InstallCodexView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallCodexView.swift; sourceTree = "<group>"; };
+		10000000000000000000000A /* APIKeyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyView.swift; sourceTree = "<group>"; };
+		10000000000000000000000B /* ConfigBackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigBackupView.swift; sourceTree = "<group>"; };
+		10000000000000000000000C /* ConfigWriteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigWriteView.swift; sourceTree = "<group>"; };
+		10000000000000000000000D /* ConnectionTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionTestView.swift; sourceTree = "<group>"; };
+		10000000000000000000000E /* FinishView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinishView.swift; sourceTree = "<group>"; };
+		10000000000000000000000F /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		100000000000000000000010 /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
+		100000000000000000000011 /* ProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessRunner.swift; sourceTree = "<group>"; };
+		100000000000000000000012 /* CodexLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexLocator.swift; sourceTree = "<group>"; };
+		100000000000000000000013 /* CodexInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexInstaller.swift; sourceTree = "<group>"; };
+		100000000000000000000014 /* ConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigManager.swift; sourceTree = "<group>"; };
+		100000000000000000000015 /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
+		100000000000000000000016 /* LaunchAgentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAgentManager.swift; sourceTree = "<group>"; };
+		100000000000000000000017 /* EndpointTester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointTester.swift; sourceTree = "<group>"; };
+		100000000000000000000018 /* RecommendedConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecommendedConfigManager.swift; sourceTree = "<group>"; };
+		100000000000000000000019 /* DiagnosticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsManager.swift; sourceTree = "<group>"; };
+		10000000000000000000001A /* AIToolConfigurator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIToolConfigurator.swift; sourceTree = "<group>"; };
+		10000000000000000000001B /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		10000000000000000000001C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		10000000000000000000001D /* AppCleanupManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCleanupManager.swift; sourceTree = "<group>"; };
+		10000000000000000000001E /* SetupReceipt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupReceipt.swift; sourceTree = "<group>"; };
+		10000000000000000000001F /* SupportReportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportReportManager.swift; sourceTree = "<group>"; };
+		100000000000000000000020 /* ResetEverythingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetEverythingView.swift; sourceTree = "<group>"; };
+		100000000000000000000021 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		100000000000000000000022 /* WorkspaceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceManager.swift; sourceTree = "<group>"; };
+		300000000000000000000001 /* AI @ UNC ChatGPT Installer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AI @ UNC ChatGPT Installer.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		400000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		500000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				500000000000000000000003 /* AI-UNC-ChatGPT-Installer */,
+				10000000000000000000001B /* README.md */,
+				500000000000000000000002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		500000000000000000000002 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				300000000000000000000001 /* AI @ UNC ChatGPT Installer.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		500000000000000000000003 /* AI-UNC-ChatGPT-Installer */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000001 /* AIUNCChatGPTInstallerApp.swift */,
+				100000000000000000000021 /* Assets.xcassets */,
+				500000000000000000000004 /* Models */,
+				500000000000000000000005 /* Views */,
+				500000000000000000000006 /* Services */,
+				500000000000000000000007 /* Resources */,
+			);
+			path = "AI-UNC-ChatGPT-Installer";
+			sourceTree = "<group>";
+		};
+		500000000000000000000004 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000004 /* SetupState.swift */,
+				10000000000000000000001E /* SetupReceipt.swift */,
+				100000000000000000000003 /* DiagnosticResult.swift */,
+				100000000000000000000002 /* RecommendedConfig.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		500000000000000000000005 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000005 /* RootView.swift */,
+				100000000000000000000006 /* SharedViews.swift */,
+				100000000000000000000007 /* WelcomeView.swift */,
+				100000000000000000000008 /* CodexDetectionView.swift */,
+				100000000000000000000009 /* InstallCodexView.swift */,
+				10000000000000000000000A /* APIKeyView.swift */,
+				10000000000000000000000B /* ConfigBackupView.swift */,
+				10000000000000000000000C /* ConfigWriteView.swift */,
+				10000000000000000000000D /* ConnectionTestView.swift */,
+				10000000000000000000000E /* FinishView.swift */,
+				10000000000000000000000F /* DashboardView.swift */,
+				100000000000000000000010 /* DiagnosticsView.swift */,
+				100000000000000000000020 /* ResetEverythingView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		500000000000000000000006 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				10000000000000000000001A /* AIToolConfigurator.swift */,
+				10000000000000000000001D /* AppCleanupManager.swift */,
+				100000000000000000000012 /* CodexLocator.swift */,
+				100000000000000000000013 /* CodexInstaller.swift */,
+				100000000000000000000014 /* ConfigManager.swift */,
+				100000000000000000000015 /* KeychainManager.swift */,
+				100000000000000000000016 /* LaunchAgentManager.swift */,
+				100000000000000000000017 /* EndpointTester.swift */,
+				100000000000000000000019 /* DiagnosticsManager.swift */,
+				100000000000000000000011 /* ProcessRunner.swift */,
+				100000000000000000000018 /* RecommendedConfigManager.swift */,
+				10000000000000000000001F /* SupportReportManager.swift */,
+				100000000000000000000022 /* WorkspaceManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		500000000000000000000007 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				10000000000000000000001C /* README.md */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		600000000000000000000001 /* AI @ UNC ChatGPT Installer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 900000000000000000000002 /* Build configuration list for PBXNativeTarget "AI @ UNC ChatGPT Installer" */;
+			buildPhases = (
+				700000000000000000000001 /* Sources */,
+				400000000000000000000001 /* Frameworks */,
+				700000000000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "AI @ UNC ChatGPT Installer";
+			productName = "AI @ UNC ChatGPT Installer";
+			productReference = 300000000000000000000001 /* AI @ UNC ChatGPT Installer.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		800000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					600000000000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 900000000000000000000001 /* Build configuration list for PBXProject "AI-UNC-ChatGPT-Installer" */;
+			compatibilityVersion = "Xcode 15.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 500000000000000000000001;
+			productRefGroup = 500000000000000000000002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				600000000000000000000001 /* AI @ UNC ChatGPT Installer */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		700000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				20000000000000000000001F /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		700000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				200000000000000000000001 /* AIUNCChatGPTInstallerApp.swift in Sources */,
+				200000000000000000000004 /* SetupState.swift in Sources */,
+				200000000000000000000003 /* DiagnosticResult.swift in Sources */,
+				200000000000000000000002 /* RecommendedConfig.swift in Sources */,
+				200000000000000000000005 /* RootView.swift in Sources */,
+				200000000000000000000006 /* SharedViews.swift in Sources */,
+				200000000000000000000007 /* WelcomeView.swift in Sources */,
+				200000000000000000000008 /* CodexDetectionView.swift in Sources */,
+				200000000000000000000009 /* InstallCodexView.swift in Sources */,
+				20000000000000000000000A /* APIKeyView.swift in Sources */,
+				20000000000000000000000B /* ConfigBackupView.swift in Sources */,
+				20000000000000000000000C /* ConfigWriteView.swift in Sources */,
+				20000000000000000000000D /* ConnectionTestView.swift in Sources */,
+				20000000000000000000000E /* FinishView.swift in Sources */,
+				20000000000000000000000F /* DashboardView.swift in Sources */,
+				200000000000000000000010 /* DiagnosticsView.swift in Sources */,
+				20000000000000000000001A /* AIToolConfigurator.swift in Sources */,
+				200000000000000000000012 /* CodexLocator.swift in Sources */,
+				200000000000000000000013 /* CodexInstaller.swift in Sources */,
+				200000000000000000000014 /* ConfigManager.swift in Sources */,
+				200000000000000000000015 /* KeychainManager.swift in Sources */,
+				200000000000000000000016 /* LaunchAgentManager.swift in Sources */,
+				200000000000000000000017 /* EndpointTester.swift in Sources */,
+				200000000000000000000019 /* DiagnosticsManager.swift in Sources */,
+				200000000000000000000011 /* ProcessRunner.swift in Sources */,
+				200000000000000000000018 /* RecommendedConfigManager.swift in Sources */,
+				20000000000000000000001B /* AppCleanupManager.swift in Sources */,
+				20000000000000000000001C /* SetupReceipt.swift in Sources */,
+				20000000000000000000001D /* SupportReportManager.swift in Sources */,
+				20000000000000000000001E /* ResetEverythingView.swift in Sources */,
+				200000000000000000000020 /* WorkspaceManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		900000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		900000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		900000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 25;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "AI @ UNC ChatGPT Installer";
+				INFOPLIST_KEY_CFBundleName = "AI @ UNC ChatGPT Installer";
+				INFOPLIST_KEY_CFBundleShortVersionString = 1.0;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "AI @ UNC ChatGPT Installer uses Terminal only when opening the Codex CLI from the dashboard.";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "edu.unc.ai-codex-installer";
+				PRODUCT_NAME = "AI @ UNC ChatGPT Installer";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		900000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 25;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "AI @ UNC ChatGPT Installer";
+				INFOPLIST_KEY_CFBundleName = "AI @ UNC ChatGPT Installer";
+				INFOPLIST_KEY_CFBundleShortVersionString = 1.0;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "AI @ UNC ChatGPT Installer uses Terminal only when opening the Codex CLI from the dashboard.";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "edu.unc.ai-codex-installer";
+				PRODUCT_NAME = "AI @ UNC ChatGPT Installer";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		900000000000000000000001 /* Build configuration list for PBXProject "AI-UNC-ChatGPT-Installer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				900000000000000000000003 /* Debug */,
+				900000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		900000000000000000000002 /* Build configuration list for PBXNativeTarget "AI @ UNC ChatGPT Installer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				900000000000000000000005 /* Debug */,
+				900000000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 800000000000000000000001 /* Project object */;
+}
