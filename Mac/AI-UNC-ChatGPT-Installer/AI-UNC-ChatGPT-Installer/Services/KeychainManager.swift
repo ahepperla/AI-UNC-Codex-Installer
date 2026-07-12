@@ -16,6 +16,15 @@ final class KeychainManager: @unchecked Sendable {
         }
 
         let query = baseQuery()
+
+        if apiKeyExists() {
+            let updateStatus = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+            guard updateStatus == errSecSuccess else {
+                throw KeychainError.securityError(updateStatus)
+            }
+            return
+        }
+
         var attributes: [String: Any] = [
             kSecValueData as String: data
         ]
@@ -25,26 +34,12 @@ final class KeychainManager: @unchecked Sendable {
             attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         }
 
-        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if updateStatus == errSecSuccess {
-            return
-        }
-        if updateStatus != errSecItemNotFound {
-            let dataOnlyStatus = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
-            if dataOnlyStatus == errSecSuccess {
-                return
-            }
-        }
-        guard updateStatus == errSecItemNotFound else {
-            throw KeychainError.securityError(updateStatus)
-        }
-
         var addQuery = query
         attributes.forEach { addQuery[$0.key] = $0.value }
 
         let status = SecItemAdd(addQuery as CFDictionary, nil)
         if status == errSecDuplicateItem {
-            let retryStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+            let retryStatus = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
             guard retryStatus == errSecSuccess else {
                 throw KeychainError.securityError(retryStatus)
             }
