@@ -50,7 +50,7 @@ struct CodexModel: Identifiable, Hashable, Codable, Sendable {
     var defaultReasoningEffort: CodexReasoningEffort?
 
     var displayLabel: String {
-        isRecommended ? "\(label) Recommended" : label
+        label
     }
 
     var supportsReasoningSelection: Bool {
@@ -133,6 +133,8 @@ struct ConfigSummary: Equatable, Sendable {
     var model: String?
     var provider: String?
     var reasoningEffort: String?
+    var modelCatalogPath: String?
+    var modelCatalogExists: Bool
     var endpoint: String?
     var wireAPI: String?
     var usesEnvironmentKey: Bool
@@ -145,6 +147,8 @@ struct ConfigSummary: Equatable, Sendable {
             model: nil,
             provider: nil,
             reasoningEffort: nil,
+            modelCatalogPath: nil,
+            modelCatalogExists: false,
             endpoint: nil,
             wireAPI: nil,
             usesEnvironmentKey: false,
@@ -178,6 +182,11 @@ struct ConfigSummary: Equatable, Sendable {
             }
         } else if approvedModel.isRecommended {
             mismatches.append("Reasoning effort is missing for \(approvedModel.id).")
+        }
+        if modelCatalogPath == nil {
+            mismatches.append("UNC model catalog is missing; Codex may show unapproved OpenAI models.")
+        } else if !modelCatalogExists {
+            mismatches.append("UNC model catalog file is missing at \(modelCatalogPath ?? "configured path").")
         }
         if endpoint != recommended.endpoint {
             mismatches.append("Endpoint is \(endpoint ?? "missing"), expected \(recommended.endpoint).")

@@ -11,12 +11,11 @@ struct ResetEverythingView: View {
             )
 
             VStack(alignment: .leading, spacing: 10) {
-                Label("The current config will be backed up before the selected backup is restored.", systemImage: "archivebox")
-                Label("The UNC_AZURE_API_KEY Keychain item will be removed.", systemImage: "key.slash")
-                Label("The LaunchAgent, helper script, and GUI environment variable will be removed.", systemImage: "calendar.badge.minus")
-                Label("The workspace folder and user files are not deleted.", systemImage: "folder")
+                AlignedIconText("The current config will be backed up before the selected backup is restored.", systemImage: "archivebox")
+                AlignedIconText("The UNC_AZURE_API_KEY Keychain item will be removed.", systemImage: "key.slash")
+                AlignedIconText("The LaunchAgent, helper script, and GUI environment variable will be removed.", systemImage: "calendar.badge.minus")
+                AlignedIconText("The project parent folder and user files are not deleted.", systemImage: "folder")
             }
-            .foregroundStyle(.secondary)
 
             Divider()
 

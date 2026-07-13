@@ -23,11 +23,17 @@ struct ConfigWriteView: View {
                     )
 
                 if state.usePlaintextFallback {
-                    Label("The actual file will contain your API key in plaintext.", systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
+                    AlignedIconText(
+                        "The actual file will contain your API key in plaintext.",
+                        systemImage: "exclamationmark.triangle.fill",
+                        color: .orange
+                    )
                 } else {
-                    Label("The API key will not be written to config.toml.", systemImage: "lock.shield")
-                        .foregroundStyle(.secondary)
+                    AlignedIconText(
+                        "The API key will not be written to config.toml.",
+                        systemImage: "lock.shield",
+                        color: .secondary
+                    )
                 }
             }
 
@@ -50,12 +56,14 @@ struct ConfigWriteView: View {
             return ConfigManager.plaintextConfig(
                 apiKey: "<USER_KEY>",
                 model: state.selectedModel.id,
-                reasoningEffort: state.selectedReasoningEffort
+                reasoningEffort: state.selectedReasoningEffort,
+                modelCatalogPath: state.modelCatalogPath
             )
         }
         return ConfigManager.keychainConfig(
             model: state.selectedModel.id,
-            reasoningEffort: state.selectedReasoningEffort
+            reasoningEffort: state.selectedReasoningEffort,
+            modelCatalogPath: state.modelCatalogPath
         )
     }
 }

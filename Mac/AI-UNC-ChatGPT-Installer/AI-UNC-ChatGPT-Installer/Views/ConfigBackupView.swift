@@ -12,16 +12,23 @@ struct ConfigBackupView: View {
 
             if state.hasExistingConfig {
                 VStack(alignment: .leading, spacing: 12) {
-                    Label("This installer will create a fresh Codex configuration. Your existing config will be backed up before changes are made.", systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
+                    AlignedIconText(
+                        "This installer will create a fresh Codex configuration. Your existing config will be backed up before changes are made.",
+                        systemImage: "exclamationmark.triangle.fill",
+                        color: .orange,
+                        font: .title3
+                    )
                     Text("Backup files use a timestamped name such as config.toml.backup.20260629_151200.")
                         .foregroundStyle(.secondary)
                 }
                 .font(.title3)
             } else {
-                Label("No existing config was found at \(state.codexConfigPath).", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                    .font(.title3)
+                AlignedIconText(
+                    "No existing config was found at \(state.codexConfigPath).",
+                    systemImage: "checkmark.circle.fill",
+                    color: .green,
+                    font: .title3
+                )
             }
 
             if let backupURL = state.backupURL {

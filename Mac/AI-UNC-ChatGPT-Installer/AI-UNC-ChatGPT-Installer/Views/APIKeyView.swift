@@ -26,12 +26,17 @@ struct APIKeyView: View {
                 .toggleStyle(.checkbox)
 
                 if state.usePlaintextFallback {
-                    Label("This writes the API key in plaintext as experimental_bearer_token. Use Keychain storage unless support explicitly asks for this fallback.", systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                        .fixedSize(horizontal: false, vertical: true)
+                    AlignedIconText(
+                        "This writes the API key in plaintext as experimental_bearer_token. Use Keychain storage unless support explicitly asks for this fallback.",
+                        systemImage: "exclamationmark.triangle.fill",
+                        color: .orange
+                    )
                 } else {
-                    Label("Keychain storage creates a LaunchAgent that loads UNC_AZURE_API_KEY into the GUI login environment.", systemImage: "lock")
-                        .foregroundStyle(.secondary)
+                    AlignedIconText(
+                        "Keychain storage creates a LaunchAgent that loads UNC_AZURE_API_KEY into the GUI login environment.",
+                        systemImage: "lock",
+                        color: .secondary
+                    )
                 }
 
                 Divider()

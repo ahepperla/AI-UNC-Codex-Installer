@@ -32,15 +32,17 @@ Setup is not marked complete unless the endpoint test succeeds. ChatGPT Desktop 
 
 - Respects `CODEX_HOME` when that environment variable is visible to the app.
 - Uses `~/.codex` when `CODEX_HOME` is not set.
-- Creates `~/Documents/ChatGPT` as the default workspace for new installs.
-- Keeps using `~/Documents/Codex` when that workspace folder already exists.
-- Saves a custom workspace path when the user changes it.
+- Sets `~/Documents/ChatGPT` as the default project parent path for new installs without creating a ChatGPT Desktop project.
+- Uses `~/Documents/Codex` when it already exists, otherwise `~/Documents/ChatGPT`; these are parent folders, not automatic ChatGPT Desktop projects.
+- Removes the old empty `~/Documents/Codex/ChatGPT` project folder if a previous installer run created it and it has no files.
+- Saves a custom project parent path when the user changes it.
 - Stores the API key in macOS Keychain by default.
 - Backs up the existing `<Codex home>/config.toml`.
 - Writes a fresh Codex config with `env_key = "UNC_AZURE_API_KEY"`.
 - Defaults to `gpt-5.5` with `medium` reasoning.
 - Offers only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
 - Omits `model_reasoning_effort` for alternate models unless their supported values are known.
+- When Codex is available, writes `<Codex home>/unc/model-catalog.json` by filtering Codex's current model catalog and points `model_catalog_json` at it so Codex shows only approved UNC models.
 - Creates `~/Library/LaunchAgents/edu.unc.codex.env.plist`.
 - Creates `<Codex home>/unc/load_unc_codex_env.sh`.
 - Tests `https://azureaiapi.cloud.unc.edu/openai/v1/responses`.
@@ -55,7 +57,7 @@ The app finishes UNC configuration first. The final screen then offers ChatGPT D
 - Install or reinstall Codex CLI.
 - Open ChatGPT Desktop when it is detected.
 - Open Codex CLI when it is detected.
-- Open the configured workspace folder.
+- Open the configured project parent folder.
 
 The desktop installer downloads the ChatGPT DMG, mounts it, copies `ChatGPT.app` into `/Applications` when possible or `~/Applications` otherwise, and unmounts the disk image. If the direct DMG download fails, the app opens the official ChatGPT download page instead.
 
@@ -65,9 +67,9 @@ Before a ChatGPT Desktop or Codex CLI install starts, the app warns the user tha
 
 ## Finish Behavior
 
-The finish screen has a dedicated `Finish` button. By default, clicking it opens ChatGPT Desktop if it is installed, tries to move the installer app to Trash, and quits.
+The finish screen has a dedicated `Finish` button. By default, clicking it tries to move the installer app to Trash, opens ChatGPT Desktop, and does not send a workspace path to the app, so a new desktop install does not get an automatic project entry.
 
-If macOS blocks the cleanup because the app is running from a read-only or translocated location, setup still finishes and the app quits cleanly. Users can uncheck the finish options to keep the dashboard open.
+Users can turn off the ChatGPT Desktop launch checkbox, open ChatGPT Desktop from the finish screen, or open the configured project parent folder when they want to add a project. If macOS blocks cleanup because the app is running from a read-only or translocated location, setup still finishes and the app quits cleanly.
 
 ## Security Notes
 
@@ -122,7 +124,9 @@ Terminal windows that were already open before setup may not inherit the new env
 
 `Reset Everything` is for support cases. It backs up the current config, restores a selected backup, deletes the Keychain item, unloads and removes the LaunchAgent, removes the helper script, and clears the GUI login environment variable.
 
-Reset does not delete the workspace folder or user files.
+`Uninstall Desktop`, `Uninstall CLI`, and `Uninstall All` are dashboard actions for removal. Uninstall All removes UNC credentials, LaunchAgent files, installer support files, and restores or removes the active Codex config. It also tries to remove ChatGPT Desktop and Codex CLI from safe known install locations.
+
+Reset does not delete project parent folders or user files.
 
 Reset Everything requires the user to select a config backup to restore.
 

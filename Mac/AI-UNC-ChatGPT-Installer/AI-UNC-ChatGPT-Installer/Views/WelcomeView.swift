@@ -48,17 +48,16 @@ struct WelcomeView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Label("Creates and uses \(state.workspaceDirectoryPath) as the workspace.", systemImage: "folder.fill")
+                        AlignedIconText("Uses \(state.workspaceDirectoryPath) as the project parent.", systemImage: "folder.fill")
                         if state.workspaceUsesLegacyCodexDirectory {
-                            Label("Using existing workspace because Documents/Codex already exists.", systemImage: "folder.badge.gearshape")
+                            AlignedIconText("Uses Documents/Codex as the project parent.", systemImage: "folder.badge.gearshape")
                         }
-                        Label("Writes Codex config under \(state.codexHomeDescription).", systemImage: "doc.text")
-                        Label("Saves the key in macOS Keychain.", systemImage: "lock.shield")
-                        Label("Backs up existing Codex config before writing the UNC config.", systemImage: "archivebox")
-                        Label("Tests the UNC endpoint before marking setup complete.", systemImage: "network")
-                        Label("Shows Codex install options only after configuration succeeds.", systemImage: "checklist.checked")
+                        AlignedIconText("Writes Codex config under \(state.codexHomeDescription).", systemImage: "doc.text")
+                        AlignedIconText("Saves the key in macOS Keychain.", systemImage: "lock.shield")
+                        AlignedIconText("Backs up existing Codex config before writing the UNC config.", systemImage: "archivebox")
+                        AlignedIconText("Tests the UNC endpoint before marking setup complete.", systemImage: "network")
+                        AlignedIconText("Shows Codex install options only after configuration succeeds.", systemImage: "checklist.checked")
                     }
-                    .foregroundStyle(.secondary)
                 }
                 .padding(18)
                 .frame(maxWidth: 720, alignment: .leading)
@@ -71,7 +70,7 @@ struct WelcomeView: View {
                 DisclosureGroup(isExpanded: $showAdvanced) {
                     VStack(alignment: .leading, spacing: 14) {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Workspace folder")
+                            Text("Project parent folder")
                                 .font(.headline)
 
                             Text(state.workspaceDirectoryPath)
@@ -106,9 +105,11 @@ struct WelcomeView: View {
                         .disabled(state.isBusy)
 
                         if state.usePlaintextFallback {
-                            Label("Use Keychain storage unless support asks for this fallback.", systemImage: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                                .fixedSize(horizontal: false, vertical: true)
+                            AlignedIconText(
+                                "Use Keychain storage unless support asks for this fallback.",
+                                systemImage: "exclamationmark.triangle.fill",
+                                color: .orange
+                            )
                         }
 
                         HStack {

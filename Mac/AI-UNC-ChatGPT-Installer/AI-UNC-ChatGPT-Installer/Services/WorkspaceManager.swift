@@ -8,6 +8,7 @@ final class WorkspaceManager: @unchecked Sendable {
     init(fileManager: FileManager = .default, defaults: UserDefaults = .standard) {
         self.fileManager = fileManager
         self.defaults = defaults
+        migrateStaleChildWorkspace()
     }
 
     var defaultWorkspaceURL: URL {
@@ -38,11 +39,17 @@ final class WorkspaceManager: @unchecked Sendable {
             return defaultWorkspaceURL
         }
 
-        return URL(fileURLWithPath: NSString(string: path).expandingTildeInPath, isDirectory: true)
+        let savedURL = URL(fileURLWithPath: NSString(string: path).expandingTildeInPath, isDirectory: true)
+        let normalizedURL = normalizedWorkspaceURL(savedURL)
+        if normalizedURL.path != savedURL.standardizedFileURL.path {
+            defaults.set(normalizedURL.path, forKey: workspacePathKey)
+            removeStaleEmptyChildWorkspace()
+        }
+        return normalizedURL
     }
 
     func setWorkspaceURL(_ url: URL) {
-        defaults.set(url.standardizedFileURL.path, forKey: workspacePathKey)
+        defaults.set(normalizedWorkspaceURL(url).path, forKey: workspacePathKey)
     }
 
     func resetToDefault() {
@@ -56,11 +63,47 @@ final class WorkspaceManager: @unchecked Sendable {
     }
 
     func isLegacyCodexWorkspace(_ url: URL) -> Bool {
-        url.standardizedFileURL.path == legacyCodexWorkspaceURL.standardizedFileURL.path
+        let workspacePath = url.standardizedFileURL.path
+        let legacyPath = legacyCodexWorkspaceURL.standardizedFileURL.path
+        return workspacePath == legacyPath || url.standardizedFileURL.deletingLastPathComponent().path == legacyPath
     }
 
     private func isExistingDirectory(_ url: URL) -> Bool {
         var isDirectory: ObjCBool = false
         return fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
+
+    private func normalizedWorkspaceURL(_ url: URL) -> URL {
+        let standardizedURL = url.standardizedFileURL
+        let oldChildDefaultURL = legacyCodexWorkspaceURL.appendingPathComponent("ChatGPT", isDirectory: true).standardizedFileURL
+
+        if standardizedURL.path == oldChildDefaultURL.path {
+            return legacyCodexWorkspaceURL.standardizedFileURL
+        }
+
+        return standardizedURL
+    }
+
+    private func migrateStaleChildWorkspace() {
+        if let path = defaults.string(forKey: workspacePathKey),
+           !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let savedURL = URL(fileURLWithPath: NSString(string: path).expandingTildeInPath, isDirectory: true)
+            let normalizedURL = normalizedWorkspaceURL(savedURL)
+            if normalizedURL.path != savedURL.standardizedFileURL.path {
+                defaults.set(normalizedURL.path, forKey: workspacePathKey)
+            }
+        }
+
+        removeStaleEmptyChildWorkspace()
+    }
+
+    private func removeStaleEmptyChildWorkspace() {
+        let url = legacyCodexWorkspaceURL.appendingPathComponent("ChatGPT", isDirectory: true).standardizedFileURL
+        guard isExistingDirectory(url),
+              (try? fileManager.contentsOfDirectory(atPath: url.path).isEmpty) == true else {
+            return
+        }
+
+        try? fileManager.removeItem(at: url)
     }
 }

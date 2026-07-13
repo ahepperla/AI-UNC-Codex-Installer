@@ -109,19 +109,23 @@ struct StatusBanner: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let error = state.errorMessage {
-                Label(error, systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
+                AlignedIconText(
+                    error,
+                    systemImage: "exclamationmark.triangle.fill",
+                    color: .red
+                )
             } else if !state.installStatusTitle.isEmpty && state.currentStep.showsInstallStatusPanel {
                 EmptyView()
             } else if state.isBusy {
-                HStack(spacing: 10) {
+                HStack(alignment: .center, spacing: 10) {
                     ProgressView()
                         .controlSize(.small)
+                        .frame(width: 22, height: 20)
                     Text(state.statusMessage.isEmpty ? "Working..." : state.statusMessage)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else if !state.statusMessage.isEmpty {
-                Label(state.statusMessage, systemImage: "info.circle")
-                    .foregroundStyle(.secondary)
+                AlignedIconText(state.statusMessage, systemImage: "info.circle", color: .secondary)
             }
         }
         .font(.callout)
@@ -191,11 +195,11 @@ struct InstallStatusPanel: View {
                 if state.isBusy {
                     ProgressView()
                         .controlSize(.small)
-                        .frame(width: 20)
+                        .frame(width: 22, height: 22)
                 } else {
                     Image(systemName: statusIcon)
                         .foregroundStyle(statusColor)
-                        .frame(width: 20)
+                        .frame(width: 22, height: 22, alignment: .top)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -279,7 +283,7 @@ struct ModelAndReasoningControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
                 Text("Model")
                     .font(.headline)
                     .frame(width: 110, alignment: .leading)
@@ -295,7 +299,7 @@ struct ModelAndReasoningControls: View {
                 .disabled(isDisabled)
             }
 
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
                 Text("Reasoning")
                     .font(.headline)
                     .frame(width: 110, alignment: .leading)
@@ -331,6 +335,43 @@ struct ModelAndReasoningControls: View {
     }
 }
 
+struct AlignedIconText: View {
+    private let text: String
+    private let systemImage: String
+    private let color: Color
+    private let font: Font
+    private let iconWidth: CGFloat
+
+    init(
+        _ text: String,
+        systemImage: String,
+        color: Color = .secondary,
+        font: Font = .callout,
+        iconWidth: CGFloat = 22
+    ) {
+        self.text = text
+        self.systemImage = systemImage
+        self.color = color
+        self.font = font
+        self.iconWidth = iconWidth
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(font)
+                .foregroundStyle(color)
+                .frame(width: iconWidth, height: 20, alignment: .top)
+                .padding(.top, 1)
+
+            Text(text)
+                .font(font)
+                .foregroundStyle(color)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
 struct InfoRow: View {
     var title: String
     var value: String
@@ -338,17 +379,20 @@ struct InfoRow: View {
     var passed: Bool?
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: systemImage)
                 .foregroundStyle(iconColor)
-                .frame(width: 22)
+                .frame(width: 22, height: 20, alignment: .top)
+                .padding(.top, 2)
             Text(title)
                 .frame(width: 190, alignment: .leading)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Text(value)
                 .font(.system(.body, design: .monospaced))
                 .textSelection(.enabled)
                 .lineLimit(2)
+                .truncationMode(.middle)
             Spacer(minLength: 0)
         }
         .padding(.vertical, 6)
@@ -373,6 +417,7 @@ struct StatusPill: View {
     var body: some View {
         Text(text)
             .font(.caption.weight(.semibold))
+            .lineLimit(1)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(backgroundColor, in: Capsule())

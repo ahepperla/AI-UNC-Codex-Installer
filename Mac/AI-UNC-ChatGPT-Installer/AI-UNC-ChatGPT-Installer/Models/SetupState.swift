@@ -207,6 +207,10 @@ final class SetupState: ObservableObject {
         configManager.configURL.path
     }
 
+    var modelCatalogPath: String {
+        configManager.modelCatalogURL.path
+    }
+
     var setupReceiptText: String {
         let receipt = setupReceipt ?? makeSetupReceipt(installation: detection ?? dashboardSnapshot.installation)
         return receipt.plainText
@@ -369,9 +373,8 @@ final class SetupState: ObservableObject {
         defer { isBusy = false }
 
         do {
-            statusMessage = "Preparing workspace."
-            let workspaceURL = try workspaceManager.ensureWorkspaceDirectory()
-            workspaceDirectoryPath = workspaceURL.path
+            statusMessage = "Setting project parent."
+            workspaceDirectoryPath = workspaceManager.workspaceURL.path
 
             currentStep = .apiKey
             statusMessage = "Saving API key."
@@ -437,8 +440,7 @@ final class SetupState: ObservableObject {
         }
 
         await performBusy("Saving API key.") {
-            let workspaceURL = try workspaceManager.ensureWorkspaceDirectory()
-            workspaceDirectoryPath = workspaceURL.path
+            workspaceDirectoryPath = workspaceManager.workspaceURL.path
 
             if selectedStorageMode == .keychain {
                 if !trimmedKey.isEmpty {
@@ -618,9 +620,9 @@ final class SetupState: ObservableObject {
 
     func chooseWorkspaceDirectory() {
         let panel = NSOpenPanel()
-        panel.title = "Choose Workspace Folder"
+        panel.title = "Choose Project Parent Folder"
         panel.prompt = "Use Folder"
-        panel.message = "ChatGPT Desktop or Codex CLI will open in this folder when opened from AI @ UNC ChatGPT Installer."
+        panel.message = "This folder is used for explicit folder and Codex CLI actions. ChatGPT Desktop opens without automatically creating a project."
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -630,14 +632,14 @@ final class SetupState: ObservableObject {
         if panel.runModal() == .OK, let url = panel.url {
             workspaceManager.setWorkspaceURL(url)
             workspaceDirectoryPath = workspaceManager.workspaceURL.path
-            statusMessage = "Workspace set to \(workspaceDirectoryPath)."
+            statusMessage = "Project parent set to \(workspaceDirectoryPath)."
         }
     }
 
     func resetWorkspaceDirectoryToDefault() {
         workspaceManager.resetToDefault()
         workspaceDirectoryPath = workspaceManager.workspaceURL.path
-        statusMessage = "Workspace reset to \(workspaceDirectoryPath)."
+        statusMessage = "Project parent reset to \(workspaceDirectoryPath)."
     }
 
     func openWorkspaceFolder() {
@@ -645,9 +647,9 @@ final class SetupState: ObservableObject {
             let workspaceURL = try workspaceManager.ensureWorkspaceDirectory()
             workspaceDirectoryPath = workspaceURL.path
             NSWorkspace.shared.open(workspaceURL)
-            statusMessage = "Opened workspace folder."
+            statusMessage = "Opened project parent folder."
         } catch {
-            errorMessage = "Could not open workspace folder: \(error.localizedDescription)"
+            errorMessage = "Could not open project parent folder: \(error.localizedDescription)"
         }
     }
 
@@ -752,32 +754,26 @@ final class SetupState: ObservableObject {
         codexInstallSucceeded = installation.isInstalled
         setupReceipt = makeSetupReceipt(installation: installation)
 
-        let workspaceURL: URL
-        do {
-            workspaceURL = try workspaceManager.ensureWorkspaceDirectory()
-            workspaceDirectoryPath = workspaceURL.path
-        } catch {
-            errorMessage = "Could not prepare workspace folder: \(error.localizedDescription)"
-            return
-        }
-
         if let appPath = installation.desktopAppPath {
             let url = URL(fileURLWithPath: appPath)
             do {
-                try await openApplication(at: url, workspaceURL: workspaceURL)
-                statusMessage = "Opened Codex in \(workspaceURL.path)."
+                try await openApplication(at: url)
+                statusMessage = "Opened ChatGPT Desktop."
             } catch {
-                do {
-                    try await openApplication(at: url)
-                    statusMessage = "Opened Codex. If it does not open the workspace automatically, choose \(workspaceURL.path)."
-                } catch {
-                    errorMessage = "Could not open Codex app: \(error.localizedDescription)"
-                }
+                errorMessage = "Could not open ChatGPT Desktop: \(error.localizedDescription)"
             }
             return
         }
 
         if let cliPath = installation.cliPath {
+            let workspaceURL: URL
+            do {
+                workspaceURL = try workspaceManager.ensureWorkspaceDirectory()
+                workspaceDirectoryPath = workspaceURL.path
+            } catch {
+                errorMessage = "Could not prepare project parent folder: \(error.localizedDescription)"
+                return
+            }
             await launchCLIInTerminal(cliPath: cliPath, workspaceURL: workspaceURL)
             return
         }
@@ -797,26 +793,12 @@ final class SetupState: ObservableObject {
             return
         }
 
-        let workspaceURL: URL
-        do {
-            workspaceURL = try workspaceManager.ensureWorkspaceDirectory()
-            workspaceDirectoryPath = workspaceURL.path
-        } catch {
-            errorMessage = "Could not prepare workspace folder: \(error.localizedDescription)"
-            return
-        }
-
         let url = URL(fileURLWithPath: appPath)
         do {
-            try await openApplication(at: url, workspaceURL: workspaceURL)
-            statusMessage = "Opened ChatGPT Desktop in \(workspaceURL.path)."
+            try await openApplication(at: url)
+            statusMessage = "Opened ChatGPT Desktop."
         } catch {
-            do {
-                try await openApplication(at: url)
-                statusMessage = "Opened ChatGPT Desktop. If it does not open the workspace automatically, choose \(workspaceURL.path)."
-            } catch {
-                errorMessage = "Could not open ChatGPT Desktop: \(error.localizedDescription)"
-            }
+            errorMessage = "Could not open ChatGPT Desktop: \(error.localizedDescription)"
         }
     }
 
@@ -895,6 +877,58 @@ final class SetupState: ObservableObject {
                 reasoningEffort: selectedReasoningEffort
             )
             statusMessage = "Codex config was reset. \(result.message)"
+            await refreshDashboard()
+        }
+    }
+
+    func uninstallCodexDesktopApp() async {
+        guard confirmDestructiveAction(
+            title: "Uninstall ChatGPT Desktop?",
+            message: "This moves ChatGPT.app or Codex.app to Trash when it is installed in /Applications or ~/Applications."
+        ) else {
+            return
+        }
+
+        await performBusy("Uninstalling ChatGPT Desktop.") {
+            let message = try await uninstallDesktopAppIfPresent()
+            statusMessage = message
+            await refreshDashboard()
+        }
+    }
+
+    func uninstallCodexCLI() async {
+        guard confirmDestructiveAction(
+            title: "Uninstall Codex CLI?",
+            message: "This removes the standalone codex command only when it is installed in a known user-owned location."
+        ) else {
+            return
+        }
+
+        await performBusy("Uninstalling Codex CLI.") {
+            let message = try await uninstallCLIIfPresent()
+            statusMessage = message
+            await refreshDashboard()
+        }
+    }
+
+    func uninstallAllUNCSetup() async {
+        guard confirmDestructiveAction(
+            title: "Uninstall all UNC ChatGPT/Codex setup?",
+            message: "This removes UNC credentials, LaunchAgent files, installer support files, restores or removes the active Codex config, and removes detected app/CLI installs from safe locations. Project parent folders and user files are not deleted."
+        ) else {
+            return
+        }
+
+        await performBusy("Uninstalling UNC setup.") {
+            var messages: [String] = []
+            messages.append((try? await uninstallDesktopAppIfPresent()) ?? "ChatGPT Desktop could not be removed automatically.")
+            messages.append((try? await uninstallCLIIfPresent()) ?? "Codex CLI could not be removed automatically.")
+            try keychainManager.deleteAPIKey()
+            try await launchAgentManager.removeInstallation()
+            let configResult = try configManager.uninstallUNCConfig()
+            try configManager.removeInstallerSupportFiles()
+            messages.append(configResult.message)
+            statusMessage = "Uninstall complete. \(messages.joined(separator: " "))"
             await refreshDashboard()
         }
     }
@@ -1039,6 +1073,74 @@ final class SetupState: ObservableObject {
         }
     }
 
+    private func confirmDestructiveAction(title: String, message: String) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Continue")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    private func uninstallDesktopAppIfPresent() async throws -> String {
+        let installation = await codexLocator.detectInstallation()
+        guard let appPath = installation.desktopAppPath else {
+            return "ChatGPT Desktop was not installed."
+        }
+
+        let appURL = URL(fileURLWithPath: appPath)
+        guard isSafeDesktopAppURL(appURL) else {
+            throw SetupError.operationFailed("Refusing to remove app outside /Applications or ~/Applications: \(appPath)")
+        }
+
+        let result = await appCleanupManager.moveToTrash(appURL)
+        switch result {
+        case .movedToTrash:
+            return "\(appURL.lastPathComponent) was moved to Trash."
+        case .notMoved(let reason):
+            throw SetupError.operationFailed("Could not move \(appURL.lastPathComponent) to Trash: \(reason)")
+        }
+    }
+
+    private func uninstallCLIIfPresent() async throws -> String {
+        let installation = await codexLocator.detectInstallation()
+        guard let cliPath = installation.cliPath else {
+            return "Codex CLI was not installed."
+        }
+
+        guard isSafeCLIPath(cliPath) else {
+            throw SetupError.operationFailed("Refusing to remove Codex CLI outside a known standalone install location: \(cliPath)")
+        }
+
+        try FileManager.default.removeItem(atPath: cliPath)
+        return "Codex CLI was removed from \(cliPath)."
+    }
+
+    private func isSafeDesktopAppURL(_ url: URL) -> Bool {
+        guard ["ChatGPT.app", "Codex.app"].contains(url.lastPathComponent) else {
+            return false
+        }
+
+        let parentPath = url.deletingLastPathComponent().standardizedFileURL.path
+        let homeApplicationsPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Applications", isDirectory: true)
+            .standardizedFileURL
+            .path
+
+        return parentPath == "/Applications" || parentPath == homeApplicationsPath
+    }
+
+    private func isSafeCLIPath(_ path: String) -> Bool {
+        let url = URL(fileURLWithPath: path).standardizedFileURL
+        let home = FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL.path
+        let allowedPaths = [
+            "\(home)/.local/bin/codex"
+        ]
+
+        return allowedPaths.contains(url.path)
+    }
+
     private func makeSetupReceipt(installation: CodexInstallation?) -> SetupReceipt {
         SetupReceipt(
             generatedAt: Date(),
@@ -1103,14 +1205,6 @@ final class SetupState: ObservableObject {
 
     private func autoLaunchCodexDesktopIfNeeded() async {
         guard launchCodexAfterSetup else { return }
-        let workspaceURL: URL
-        do {
-            workspaceURL = try workspaceManager.ensureWorkspaceDirectory()
-            workspaceDirectoryPath = workspaceURL.path
-        } catch {
-            statusMessage = "Setup complete, but the workspace folder could not be created."
-            return
-        }
 
         let installation = await codexLocator.detectInstallation()
         detection = installation
@@ -1121,15 +1215,10 @@ final class SetupState: ObservableObject {
         }
 
         do {
-            try await openApplication(at: URL(fileURLWithPath: appPath), workspaceURL: workspaceURL)
-            statusMessage = "Opened ChatGPT Desktop in \(workspaceURL.path)."
+            try await openApplication(at: URL(fileURLWithPath: appPath))
+            statusMessage = "Opened ChatGPT Desktop."
         } catch {
-            do {
-                try await openApplication(at: URL(fileURLWithPath: appPath))
-                statusMessage = "Opened ChatGPT Desktop. If it does not open the workspace automatically, choose \(workspaceURL.path)."
-            } catch {
-                statusMessage = "Setup complete, but ChatGPT Desktop could not be opened automatically."
-            }
+            statusMessage = "Setup complete, but ChatGPT Desktop could not be opened automatically."
         }
     }
 

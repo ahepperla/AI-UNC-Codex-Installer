@@ -54,7 +54,7 @@ CODEX_MODEL_DEPLOYMENTS=(
 )
 
 CODEX_MODEL_LABELS=(
-  "gpt-5.5 Recommended"
+  "gpt-5.5"
   "gpt-5.4"
   "gpt-5.4-mini"
   "gpt-5.4-nano"
@@ -81,6 +81,32 @@ shell_quote() {
   printf "'%s'" "$value"
 }
 
+toml_escape() {
+  local value="$1"
+  value=${value//\\/\\\\}
+  value=${value//\"/\\\"}
+  printf "%s" "$value"
+}
+
+json_escape() {
+  local value="$1"
+  value=${value//\\/\\\\}
+  value=${value//\"/\\\"}
+  value=${value//$'\n'/\\n}
+  printf "%s" "$value"
+}
+
+reasoning_description() {
+  case "$1" in
+    minimal) printf "Fastest responses for very small edits." ;;
+    low) printf "Faster responses for straightforward tasks." ;;
+    medium) printf "Balanced default for most UNC Codex work." ;;
+    high) printf "More careful reasoning for complex changes." ;;
+    xhigh) printf "Most thorough reasoning, with slower responses." ;;
+    *) printf "Uses model-supported reasoning." ;;
+  esac
+}
+
 ask_yes_no() {
   local prompt="$1"
   local default="$2"
@@ -102,7 +128,7 @@ choose_model() {
   local index
 
   echo "Codex model:"
-  echo "  Press Enter for gpt-5.5 Recommended."
+  echo "  Press Enter for gpt-5.5."
   echo "  Image, embedding, and audio deployments are intentionally not listed."
   echo
 
@@ -227,13 +253,143 @@ write_bashrc_export() {
   rm -f "$temp_file"
 }
 
+remove_bashrc_export() {
+  local bashrc="$HOME/.bashrc"
+  local temp_file
+  local new_bashrc
+
+  if [[ ! -f "$bashrc" ]]; then
+    echo "No ~/.bashrc file was found."
+    return 0
+  fi
+
+  temp_file="$(mktemp "${TMPDIR:-/tmp}/unc-codex-bashrc.XXXXXX")"
+  new_bashrc="$(mktemp "$(dirname "$bashrc")/.bashrc.unc-chatgpt.XXXXXX")"
+  register_temp_file "$temp_file"
+  register_temp_file "$new_bashrc"
+
+  awk -v start="$MARKER_START" -v end="$MARKER_END" '
+    $0 == start { skip = 1; next }
+    $0 == end { skip = 0; next }
+    skip != 1 { print }
+  ' "$bashrc" > "$temp_file"
+
+  cat "$temp_file" > "$new_bashrc"
+  chmod --reference="$bashrc" "$new_bashrc" 2>/dev/null || true
+  mv "$new_bashrc" "$bashrc"
+  rm -f "$temp_file"
+  unset "$ENV_KEY" || true
+  echo "Removed $ENV_KEY export block from ~/.bashrc."
+}
+
+write_model_catalog() {
+  local codex_home="$1"
+  local support_dir="$codex_home/unc"
+  local catalog_file="$support_dir/model-catalog.json"
+  local codex_path=""
+  local temp_codex_home=""
+  local raw_catalog
+  local temp_catalog
+
+  if ! command -v codex >/dev/null 2>&1; then
+    echo "Codex CLI was not found, so the model picker restriction was skipped."
+    return 1
+  fi
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "python3 was not found, so the model picker restriction was skipped."
+    return 1
+  fi
+
+  mkdir -p "$support_dir"
+  codex_path="$(command -v codex)"
+  temp_codex_home="$(mktemp -d "${TMPDIR:-/tmp}/ai-unc-codex-home.XXXXXX")"
+  raw_catalog="$(mktemp "$support_dir/.codex-models.XXXXXX")"
+  temp_catalog="$(mktemp "$support_dir/.model-catalog.XXXXXX")"
+  register_temp_file "$raw_catalog"
+  register_temp_file "$temp_catalog"
+
+  if ! CODEX_HOME="$temp_codex_home" "$codex_path" debug models > "$raw_catalog"; then
+    rm -rf "$temp_codex_home"
+    rm -f "$raw_catalog" "$temp_catalog"
+    echo "Codex did not return a model catalog, so the model picker restriction was skipped."
+    return 1
+  fi
+
+  if ! python3 - "$raw_catalog" "$DEFAULT_MODEL" "${CODEX_MODEL_DEPLOYMENTS[@]}" -- "${CODEX_MODEL_LABELS[@]}" > "$temp_catalog" <<'PY'
+import datetime
+import json
+import sys
+
+raw_catalog_path = sys.argv[1]
+args = sys.argv[2:]
+default_model = args[0]
+separator = args.index("--")
+deployments = args[1:separator]
+labels = args[separator + 1:]
+approved_labels = dict(zip(deployments, labels))
+
+with open(raw_catalog_path, "r", encoding="utf-8") as catalog_file:
+    catalog = json.load(catalog_file)
+models = catalog.get("models")
+if not isinstance(models, list):
+    raise SystemExit("Codex catalog did not include a models list.")
+
+filtered_models = []
+for model in models:
+    if not isinstance(model, dict):
+        continue
+    slug = model.get("slug")
+    if slug not in approved_labels:
+        continue
+
+    entry = dict(model)
+    entry["display_name"] = slug if slug == default_model else approved_labels[slug]
+    entry["description"] = (
+        "Recommended UNC model for ChatGPT/Codex work."
+        if slug == default_model
+        else "Approved UNC ChatGPT/Codex model."
+    )
+    entry["priority"] = len(filtered_models)
+    filtered_models.append(entry)
+
+if not filtered_models:
+    raise SystemExit("No approved UNC models were present in the Codex catalog.")
+
+catalog["fetched_at"] = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+catalog["models"] = filtered_models
+catalog["source"] = "AI @ UNC ChatGPT Installer filtered from Codex catalog"
+json.dump(catalog, sys.stdout, indent=2, sort_keys=True)
+sys.stdout.write("\n")
+PY
+  then
+    rm -rf "$temp_codex_home"
+    rm -f "$raw_catalog" "$temp_catalog"
+    echo "Codex did not return a usable model catalog, so the model picker restriction was skipped."
+    return 1
+  fi
+
+  rm -rf "$temp_codex_home"
+  rm -f "$raw_catalog"
+
+  mv "$temp_catalog" "$catalog_file"
+  echo "Wrote UNC model catalog:"
+  echo "  $catalog_file"
+  return 0
+}
+
 write_codex_config() {
   local codex_home="${CODEX_HOME:-$HOME/.codex}"
   local config_file="$codex_home/config.toml"
+  local catalog_file="$codex_home/unc/model-catalog.json"
+  local catalog_written=0
   local temp_config
   local backup_file
 
   mkdir -p "$codex_home"
+  if write_model_catalog "$codex_home"; then
+    catalog_written=1
+  fi
   temp_config="$(mktemp "$codex_home/.config.toml.unc-chatgpt.XXXXXX")"
   register_temp_file "$temp_config"
 
@@ -250,6 +406,9 @@ write_codex_config() {
     if [[ -n "$REASONING_EFFORT" ]]; then
       printf 'model_reasoning_effort = "%s"\n' "$REASONING_EFFORT"
     fi
+    if [[ "$catalog_written" -eq 1 ]]; then
+      printf 'model_catalog_json = "%s"\n' "$(toml_escape "$catalog_file")"
+    fi
     printf '\n[model_providers.%s]\n' "$PROVIDER"
     printf 'name = "Azure OpenAI"\n'
     printf 'base_url = "%s"\n' "$BASE_URL"
@@ -264,6 +423,84 @@ write_codex_config() {
 
   echo "Wrote Codex config:"
   echo "  $config_file"
+}
+
+restore_or_remove_config_for_uninstall() {
+  local codex_home="${CODEX_HOME:-$HOME/.codex}"
+  local config_file="$codex_home/config.toml"
+  local original_backup=""
+  local removed_file
+
+  mkdir -p "$codex_home"
+  original_backup="$(find "$codex_home" -maxdepth 1 -type f -name 'config.toml.backup.*' -print 2>/dev/null | sort | head -n 1 || true)"
+  if [[ -n "$original_backup" ]]; then
+    cp "$original_backup" "$config_file"
+    echo "Restored Codex config from:"
+    echo "  $original_backup"
+    return 0
+  fi
+
+  if [[ -f "$config_file" ]]; then
+    removed_file="$config_file.removed.$(date +%Y%m%d_%H%M%S)"
+    mv "$config_file" "$removed_file"
+    echo "No prior config backup was found. Moved current config to:"
+    echo "  $removed_file"
+  else
+    echo "No Codex config was present."
+  fi
+}
+
+uninstall_codex_cli_if_requested() {
+  local codex_path=""
+  local safe_path="$HOME/.local/bin/codex"
+
+  if ! command -v codex >/dev/null 2>&1; then
+    echo "Codex CLI was not detected."
+    return 0
+  fi
+
+  codex_path="$(command -v codex)"
+  echo "Codex CLI detected:"
+  echo "  $codex_path"
+  if [[ "$codex_path" != "$safe_path" ]]; then
+    echo "This script only removes the standalone user-local install at:"
+    echo "  $safe_path"
+    echo "Use the package manager that installed this CLI to uninstall it."
+    return 0
+  fi
+
+  if ask_yes_no "Remove Codex CLI from ~/.local/bin? [y/N] " "n"; then
+    rm -f "$safe_path"
+    echo "Removed Codex CLI from:"
+    echo "  $safe_path"
+  fi
+}
+
+uninstall_unc_setup() {
+  local codex_home="${CODEX_HOME:-$HOME/.codex}"
+  local support_dir="$codex_home/unc"
+
+  echo "This will remove UNC ChatGPT/Codex shell/config setup for this user."
+  echo "Workspace folders and user files are not deleted."
+  if ! ask_yes_no "Continue with uninstall? [y/N] " "n"; then
+    return 0
+  fi
+
+  remove_bashrc_export
+  restore_or_remove_config_for_uninstall
+
+  if [[ -d "$support_dir" ]]; then
+    rm -rf "$support_dir"
+    echo "Removed installer support files:"
+    echo "  $support_dir"
+  fi
+
+  uninstall_codex_cli_if_requested
+
+  echo
+  echo "UNC ChatGPT/Codex uninstall complete."
+  echo "Open a new Bash session or run:"
+  echo "  source ~/.bashrc"
 }
 
 install_codex_cli_if_requested() {
@@ -361,10 +598,26 @@ start_codex_if_requested() {
 
 main() {
   local api_key=""
+  local action=""
 
   echo "AI @ UNC ChatGPT setup for Linux/HPC"
   echo "Installer $INSTALLER_VERSION ($INSTALLER_BUILD_DATE)"
   echo
+
+  if [[ "${1:-}" == "--uninstall" ]]; then
+    uninstall_unc_setup
+    return 0
+  fi
+
+  echo "Choose action:"
+  echo "  1) Set up or update UNC ChatGPT/Codex config"
+  echo "  2) Uninstall UNC ChatGPT/Codex setup"
+  read -r -p "Action [1]: " action
+  action=${action:-1}
+  if [[ "$action" == "2" ]]; then
+    uninstall_unc_setup
+    return 0
+  fi
 
   while [[ -z "$api_key" ]]; do
     read -r -s -p "Paste UNC Azure OpenAI API key: " api_key
@@ -394,10 +647,10 @@ main() {
     echo "Note: your login shell appears to be $(basename "${SHELL:-unknown}"). This script updates ~/.bashrc only."
   fi
 
-  write_codex_config
-
   echo
   install_codex_cli_if_requested || true
+
+  write_codex_config
 
   echo
   echo "Setup complete."

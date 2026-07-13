@@ -53,6 +53,8 @@ final class ConfigManager: @unchecked Sendable {
     let codexHome: CodexHomeLocation
     let configDirectory: URL
     let configURL: URL
+    let supportDirectory: URL
+    let modelCatalogURL: URL
 
     private let fileManager: FileManager
 
@@ -62,6 +64,8 @@ final class ConfigManager: @unchecked Sendable {
         self.codexHome = resolvedCodexHome
         self.configDirectory = resolvedCodexHome.directoryURL
         self.configURL = configDirectory.appendingPathComponent("config.toml")
+        self.supportDirectory = configDirectory.appendingPathComponent("unc", isDirectory: true)
+        self.modelCatalogURL = supportDirectory.appendingPathComponent("model-catalog.json")
     }
 
     var configExists: Bool {
@@ -104,16 +108,26 @@ final class ConfigManager: @unchecked Sendable {
         reasoningEffort: CodexReasoningEffort? = RecommendedConfig.uncCodex.reasoningEffort
     ) throws {
         try ensureConfigDirectoryExists()
+        let modelCatalogPath = try writeModelCatalog() ? modelCatalogURL.path : nil
 
         let contents: String
         switch storageMode {
         case .keychain:
-            contents = Self.keychainConfig(model: model, reasoningEffort: reasoningEffort)
+            contents = Self.keychainConfig(
+                model: model,
+                reasoningEffort: reasoningEffort,
+                modelCatalogPath: modelCatalogPath
+            )
         case .plaintextConfig:
             guard let plaintextAPIKey, !plaintextAPIKey.isEmpty else {
                 throw ConfigManagerError.missingPlaintextAPIKey
             }
-            contents = Self.plaintextConfig(apiKey: plaintextAPIKey, model: model, reasoningEffort: reasoningEffort)
+            contents = Self.plaintextConfig(
+                apiKey: plaintextAPIKey,
+                model: model,
+                reasoningEffort: reasoningEffort,
+                modelCatalogPath: modelCatalogPath
+            )
         }
 
         try contents.write(to: configURL, atomically: true, encoding: .utf8)
@@ -131,6 +145,37 @@ final class ConfigManager: @unchecked Sendable {
         return currentBackup
     }
 
+    func uninstallUNCConfig() throws -> ConfigBackupResult {
+        try ensureConfigDirectoryExists()
+
+        let originalBackup = availableBackups().last
+        if let originalBackup {
+            let currentBackup = try backupExistingConfigIfNeeded()
+            try replaceConfigAtomically(with: originalBackup)
+            return ConfigBackupResult(
+                backupURL: currentBackup.backupURL,
+                message: "Restored \(originalBackup.lastPathComponent)."
+            )
+        }
+
+        guard configExists else {
+            return ConfigBackupResult(backupURL: nil, message: "No Codex config was present.")
+        }
+
+        let removedURL = configDirectory.appendingPathComponent("config.toml.removed.\(Self.timestamp())")
+        try fileManager.moveItem(at: configURL, to: removedURL)
+        return ConfigBackupResult(
+            backupURL: removedURL,
+            message: "No prior backup was available. Moved current config to \(removedURL.path)."
+        )
+    }
+
+    func removeInstallerSupportFiles() throws {
+        if fileManager.fileExists(atPath: supportDirectory.path) {
+            try fileManager.removeItem(at: supportDirectory)
+        }
+    }
+
     func readSummary() -> ConfigSummary {
         guard configExists, let contents = try? String(contentsOf: configURL, encoding: .utf8) else {
             return .missing(path: configURL.path)
@@ -142,6 +187,8 @@ final class ConfigManager: @unchecked Sendable {
             model: value(for: "model", in: contents),
             provider: value(for: "model_provider", in: contents),
             reasoningEffort: value(for: "model_reasoning_effort", in: contents),
+            modelCatalogPath: value(for: "model_catalog_json", in: contents),
+            modelCatalogExists: modelCatalogExists(in: contents),
             endpoint: value(for: "base_url", in: contents),
             wireAPI: value(for: "wire_api", in: contents),
             usesEnvironmentKey: value(for: "env_key", in: contents) == KeychainManager.serviceName,
@@ -158,6 +205,111 @@ final class ConfigManager: @unchecked Sendable {
 
     private func ensureConfigDirectoryExists() throws {
         try fileManager.createDirectory(at: configDirectory, withIntermediateDirectories: true)
+    }
+
+    private func ensureSupportDirectoryExists() throws {
+        try fileManager.createDirectory(at: supportDirectory, withIntermediateDirectories: true)
+    }
+
+    private func writeModelCatalog() throws -> Bool {
+        try ensureSupportDirectoryExists()
+
+        let rawCatalogData: Data?
+        do {
+            rawCatalogData = try readCurrentCodexCatalog()
+        } catch {
+            return false
+        }
+
+        guard let rawCatalogData,
+              let data = try? Self.filteredModelCatalog(from: rawCatalogData) else {
+            return false
+        }
+
+        try data.write(to: modelCatalogURL, options: .atomic)
+        return true
+    }
+
+    private func readCurrentCodexCatalog() throws -> Data? {
+        guard let codexPath = codexExecutableCandidates().first(where: { fileManager.isExecutableFile(atPath: $0) }) else {
+            return nil
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: codexPath)
+        process.arguments = ["debug", "models"]
+        let tempCodexHome = fileManager.temporaryDirectory
+            .appendingPathComponent("ai-unc-chatgpt-installer-codex-home-\(UUID().uuidString)", isDirectory: true)
+        try fileManager.createDirectory(at: tempCodexHome, withIntermediateDirectories: true)
+        defer { try? fileManager.removeItem(at: tempCodexHome) }
+        process.environment = ProcessInfo.processInfo.environment.merging(["CODEX_HOME": tempCodexHome.path]) { _, new in new }
+
+        let output = Pipe()
+        let error = Pipe()
+        process.standardOutput = output
+        process.standardError = error
+        try process.run()
+        let outputData = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        _ = error.fileHandleForReading.readDataToEndOfFile()
+
+        guard process.terminationStatus == 0, !outputData.isEmpty else {
+            return nil
+        }
+        return outputData
+    }
+
+    private func codexExecutableCandidates() -> [String] {
+        [
+            "/usr/local/bin/codex",
+            "/opt/homebrew/bin/codex",
+            "\(NSHomeDirectory())/.local/bin/codex",
+            "/Applications/ChatGPT.app/Contents/Resources/codex",
+            "\(NSHomeDirectory())/Applications/ChatGPT.app/Contents/Resources/codex",
+            "/Applications/Codex.app/Contents/Resources/codex",
+            "\(NSHomeDirectory())/Applications/Codex.app/Contents/Resources/codex"
+        ]
+    }
+
+    private static func filteredModelCatalog(from data: Data) throws -> Data {
+        guard var catalog = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let models = catalog["models"] as? [[String: Any]] else {
+            throw ConfigManagerError.invalidModelCatalog
+        }
+
+        let approvedIDs = Set(CodexModel.approvedCodexModels.map(\.id))
+        let approvedModelsByID = Dictionary(uniqueKeysWithValues: CodexModel.approvedCodexModels.map { ($0.id, $0) })
+        var filteredModels: [[String: Any]] = []
+
+        for var model in models {
+            guard let slug = model["slug"] as? String,
+                  approvedIDs.contains(slug),
+                  let approvedModel = approvedModelsByID[slug] else {
+                continue
+            }
+
+            model["display_name"] = approvedModel.label
+            model["description"] = approvedModel.isRecommended ? "Recommended UNC model for ChatGPT/Codex work." : "Approved UNC ChatGPT/Codex model."
+            model["priority"] = filteredModels.count
+            filteredModels.append(model)
+        }
+
+        guard !filteredModels.isEmpty else {
+            throw ConfigManagerError.invalidModelCatalog
+        }
+
+        catalog["fetched_at"] = ISO8601DateFormatter().string(from: Date())
+        catalog["models"] = filteredModels
+        catalog["source"] = "AI @ UNC ChatGPT Installer filtered from Codex catalog"
+        return try JSONSerialization.data(withJSONObject: catalog, options: [.prettyPrinted, .sortedKeys])
+    }
+
+    private func modelCatalogExists(in contents: String) -> Bool {
+        guard let path = value(for: "model_catalog_json", in: contents) else {
+            return false
+        }
+        let expandedPath = NSString(string: path).expandingTildeInPath
+        return fileManager.fileExists(atPath: expandedPath)
     }
 
     private func replaceConfigAtomically(with sourceURL: URL) throws {
@@ -214,14 +366,21 @@ final class ConfigManager: @unchecked Sendable {
         return "model_reasoning_effort = \"\(reasoningEffort.rawValue)\"\n"
     }
 
+    private static func modelCatalogLine(for path: String?) -> String {
+        guard let path else { return "" }
+        return "model_catalog_json = \"\(quote(path))\"\n"
+    }
+
     static func keychainConfig(
         model: String = RecommendedConfig.uncCodex.recommendedModel,
-        reasoningEffort: CodexReasoningEffort? = RecommendedConfig.uncCodex.reasoningEffort
+        reasoningEffort: CodexReasoningEffort? = RecommendedConfig.uncCodex.reasoningEffort,
+        modelCatalogPath: String?
     ) -> String {
         """
         model = "\(quote(model))"
         model_provider = "azure"
         \(reasoningLine(for: reasoningEffort))
+        \(modelCatalogLine(for: modelCatalogPath))
 
         [model_providers.azure]
         name = "Azure OpenAI"
@@ -234,12 +393,14 @@ final class ConfigManager: @unchecked Sendable {
     static func plaintextConfig(
         apiKey: String,
         model: String = RecommendedConfig.uncCodex.recommendedModel,
-        reasoningEffort: CodexReasoningEffort? = RecommendedConfig.uncCodex.reasoningEffort
+        reasoningEffort: CodexReasoningEffort? = RecommendedConfig.uncCodex.reasoningEffort,
+        modelCatalogPath: String?
     ) -> String {
         """
         model = "\(quote(model))"
         model_provider = "azure"
         \(reasoningLine(for: reasoningEffort))
+        \(modelCatalogLine(for: modelCatalogPath))
 
         [model_providers.azure]
         name = "Azure OpenAI"
@@ -253,6 +414,7 @@ final class ConfigManager: @unchecked Sendable {
 enum ConfigManagerError: LocalizedError {
     case missingPlaintextAPIKey
     case backupMissing(String)
+    case invalidModelCatalog
 
     var errorDescription: String? {
         switch self {
@@ -260,6 +422,8 @@ enum ConfigManagerError: LocalizedError {
             return "A plaintext API key is required when writing experimental_bearer_token."
         case .backupMissing(let path):
             return "The selected backup was not found: \(path)"
+        case .invalidModelCatalog:
+            return "Codex did not return a usable model catalog."
         }
     }
 }

@@ -5,11 +5,12 @@ This is the plain terminal setup path for Linux systems such as an HPC cluster. 
 The script:
 
 - Prompts for the UNC Azure OpenAI API key.
-- Asks which approved Codex model to use. Press Enter for `gpt-5.5 Recommended`.
+- Asks which approved Codex model to use. Press Enter for `gpt-5.5`.
 - Uses `medium` reasoning for `gpt-5.5` unless the user picks another value.
 - Uses model-default reasoning for alternate models and leaves `model_reasoning_effort` out of the config.
 - Writes `export UNC_AZURE_API_KEY=...` to `~/.bashrc`.
 - Writes the UNC Codex config to `$CODEX_HOME/config.toml`, or `~/.codex/config.toml` when `CODEX_HOME` is not set.
+- When Codex CLI and `python3` are available, writes `<Codex home>/unc/model-catalog.json` by filtering Codex's current model catalog and points `model_catalog_json` at it so Codex shows only approved UNC models.
 
 Image, embedding, and audio deployments are intentionally not listed because they are not suitable Codex chat/code deployments.
 
@@ -28,4 +29,14 @@ The script tries to load `~/.bashrc` automatically. If your cluster shell startu
 source ~/.bashrc
 ```
 
-The script also asks whether to install Codex CLI. It runs the installer in non-interactive mode so the installer itself does not start Codex mid-setup. After setup is complete, the script asks whether to start Codex from the configured shell. If the cluster blocks downloads from login nodes, skip the install step and install Codex using your cluster's preferred software process.
+The script also asks whether to install Codex CLI before writing the Codex config, so a first run can generate the filtered model catalog when the install succeeds. It runs the installer in non-interactive mode so the installer itself does not start Codex mid-setup. After setup is complete, the script asks whether to start Codex from the configured shell. If the cluster blocks downloads from login nodes, skip the install step and install Codex using your cluster's preferred software process, then rerun this setup to add the filtered model catalog.
+
+## Uninstall
+
+Run the script and choose `Uninstall UNC ChatGPT/Codex setup`, or run:
+
+```bash
+./setup-codex-unc-cli.sh --uninstall
+```
+
+The uninstall path removes the marked `~/.bashrc` export block, restores the newest config backup when one exists, removes installer support files, and optionally removes `~/.local/bin/codex`. It does not delete workspace folders or user files.

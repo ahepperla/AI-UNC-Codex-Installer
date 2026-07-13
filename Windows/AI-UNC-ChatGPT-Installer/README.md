@@ -16,12 +16,14 @@ Most users should only need the recommended setup button. Troubleshooting and re
 - Detects Codex CLI and the ChatGPT/Codex Windows app.
 - Respects `CODEX_HOME` when it is set.
 - Uses `%USERPROFILE%\.codex` when `CODEX_HOME` is not set.
-- Creates `Documents\ChatGPT` as the default workspace for new installs.
-- Keeps using `Documents\Codex` when that workspace folder already exists.
-- Lets advanced users choose a different workspace folder.
+- Sets `Documents\ChatGPT` as the default project parent path for new installs without creating a ChatGPT Desktop project.
+- Uses `Documents\Codex` when it already exists, otherwise `Documents\ChatGPT`; these are parent folders, not automatic ChatGPT Desktop projects.
+- Removes the old empty `Documents\Codex\ChatGPT` project folder if a previous installer run created it and it has no files.
+- Lets advanced users choose a different project parent folder.
 - Defaults to `gpt-5.5` with `medium` reasoning.
 - Offers only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
 - Omits `model_reasoning_effort` for alternate models unless their supported values are known.
+- When Codex CLI is available, writes `<Codex home>\unc\model-catalog.json` by filtering Codex's current model catalog and points `model_catalog_json` at it so Codex shows only approved UNC models.
 - Writes and tests the UNC config before offering ChatGPT Desktop or Codex CLI install/open actions.
 - Backs up the existing `<Codex home>\config.toml`.
 - Saves `UNC_AZURE_API_KEY` as a user environment variable.
@@ -41,6 +43,7 @@ After the UNC config succeeds, the installer can help install ChatGPT Desktop or
 - Warns the user before install starts because it can take several minutes.
 - Shows `Open ChatGPT Desktop` only when the desktop app is detected.
 - Shows `Open Codex CLI` only when the CLI is detected.
+- Opens ChatGPT Desktop by default after setup without sending a workspace path, so a new install does not get an automatic project entry.
 
 ## Files And Settings
 
@@ -48,7 +51,7 @@ After the UNC config succeeds, the installer can help install ChatGPT Desktop or
 - Config: `<Codex home>\config.toml`
 - Support directory: `<Codex home>\unc`
 - Workspace setting: `<Codex home>\unc\workspace-path.txt`
-- Default workspace: `Documents\ChatGPT`, unless `Documents\Codex` already exists
+- Default parent folder: `Documents\ChatGPT`, or `Documents\Codex` when `Documents\Codex` already exists
 - API key: current user's `UNC_AZURE_API_KEY` environment variable
 
 Existing Codex config files are copied to `config.toml.backup.<timestamp>` before this tool writes a new one.
@@ -58,4 +61,5 @@ Existing Codex config files are copied to `config.toml.backup.<timestamp>` befor
 - The GUI is plain on purpose. It is meant to be easy to inspect and rerun.
 - Users may need to open a new Terminal after setup so Windows picks up the updated environment variable.
 - If install fails, use the log text in the app or save a support report from Advanced Options.
-- Reset removes installer-created environment/config changes but does not delete the workspace folder or user files.
+- Reset removes installer-created environment/config changes but does not delete project parent folders or user files.
+- Advanced Options includes uninstall actions for ChatGPT Desktop, Codex CLI, and all UNC-specific setup. Uninstall All restores or removes the active Codex config and removes installer support files, but leaves project parent folders and user files alone.

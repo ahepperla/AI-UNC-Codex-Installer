@@ -89,6 +89,12 @@ final class DiagnosticsManager: @unchecked Sendable {
             failDetail: "Reasoning effort is \(summary.reasoningEffort ?? "missing"); expected a supported value or model default."
         ))
         results.append(result(
+            name: "Config uses UNC model catalog",
+            passed: summary.modelCatalogPath != nil && summary.modelCatalogExists,
+            passDetail: "Model catalog is \(summary.modelCatalogPath ?? "missing").",
+            failDetail: "Run Update Configuration to write the UNC-approved model catalog."
+        ))
+        results.append(result(
             name: "Config contains expected endpoint",
             passed: summary.endpoint == recommendedConfigManager.recommended.endpoint,
             passDetail: "Endpoint is \(summary.endpoint ?? "missing").",

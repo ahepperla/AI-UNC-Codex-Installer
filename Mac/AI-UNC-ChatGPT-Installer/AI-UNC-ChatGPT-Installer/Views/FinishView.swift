@@ -16,6 +16,7 @@ struct FinishView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 42, weight: .semibold))
                     .foregroundStyle(.green)
+                    .frame(width: 52, height: 52)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Ready for UNC ChatGPT and Codex work.")
@@ -40,9 +41,9 @@ struct FinishView: View {
                 CompletionDetailRow("Codex home: \(state.codexHomeDescription)", systemImage: "house.fill")
                 CompletionDetailRow(state.usePlaintextFallback ? "API key stored in config.toml fallback." : "API key saved for UNC_AZURE_API_KEY.", systemImage: state.usePlaintextFallback ? "doc.plaintext" : "lock.shield.fill")
                 CompletionDetailRow("UNC endpoint returned the expected response.", systemImage: "checkmark.seal.fill")
-                CompletionDetailRow("Workspace: \(state.workspaceDirectoryPath)", systemImage: "folder.fill")
+                CompletionDetailRow("Project parent: \(state.workspaceDirectoryPath)", systemImage: "folder.fill")
                 if state.workspaceUsesLegacyCodexDirectory {
-                    CompletionDetailRow("Using existing legacy workspace folder because Documents/Codex already exists.", systemImage: "folder.badge.gearshape")
+                    CompletionDetailRow("Using Documents/Codex as the project parent.", systemImage: "folder.badge.gearshape")
                 }
                 CompletionDetailRow(codexStatusText, systemImage: codexStatusIcon)
             }
@@ -96,9 +97,13 @@ struct FinishView: View {
                     )
 
                     HStack(spacing: 12) {
-                        Label("Workspace", systemImage: "folder.fill")
-                            .font(.headline)
-                            .frame(width: 136, alignment: .leading)
+                        HStack(alignment: .center, spacing: 8) {
+                            Image(systemName: "folder.fill")
+                                .frame(width: 20)
+                            Text("Project Parent")
+                        }
+                        .font(.headline)
+                        .frame(width: 136, alignment: .leading)
 
                         Text(state.workspaceDirectoryPath)
                             .font(.callout)
@@ -111,7 +116,7 @@ struct FinishView: View {
                         Button {
                             state.openWorkspaceFolder()
                         } label: {
-                            Label("Open Workspace", systemImage: "folder.fill")
+                            Label("Open Folder", systemImage: "folder.fill")
                                 .frame(width: 150)
                         }
                         .disabled(state.isBusy)
@@ -172,11 +177,11 @@ struct FinishView: View {
                     .foregroundStyle(.secondary)
 
                 Toggle(isOn: launchDesktopOnFinishBinding) {
-                    Text("Open ChatGPT Desktop when I click Finish")
+                    Text("Open ChatGPT Desktop after Finish")
                 }
                 .toggleStyle(.checkbox)
                 .disabled(!state.codexDesktopAppAvailable || state.isBusy)
-                .help(state.codexDesktopAppAvailable ? "Finish will open the installed ChatGPT desktop app." : "Install ChatGPT Desktop before using this option.")
+                .help(state.codexDesktopAppAvailable ? "Opens the app without opening a folder as a project." : "Install ChatGPT Desktop before using this option.")
 
                 Toggle(isOn: $state.moveInstallerToTrashOnFinish) {
                     Text("Remove this installer after Finish")
@@ -284,10 +289,11 @@ private struct CompletionDetailRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .top, spacing: 10) {
             Image(systemName: systemImage)
                 .font(.callout)
-                .frame(width: 20, alignment: .center)
+                .frame(width: 20, height: 20, alignment: .top)
+                .padding(.top, 1)
 
             Text(text)
                 .fixedSize(horizontal: false, vertical: true)

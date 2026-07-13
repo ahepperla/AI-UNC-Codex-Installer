@@ -16,24 +16,29 @@ struct InstallCodexView: View {
             )
 
             if cliInstalled {
-                Label("Codex CLI is installed.", systemImage: "checkmark.circle.fill")
-                    .font(.headline)
-                    .foregroundStyle(.green)
+                AlignedIconText(
+                    "Codex CLI is installed.",
+                    systemImage: "checkmark.circle.fill",
+                    color: .green,
+                    font: .headline
+                )
             } else if desktopInstalled {
-                Label("ChatGPT Desktop is installed. The CLI install is optional.", systemImage: "macwindow.and.cursorarrow")
-                    .font(.headline)
-                    .foregroundStyle(.green)
+                AlignedIconText(
+                    "ChatGPT Desktop is installed. The CLI install is optional.",
+                    systemImage: "macwindow.and.cursorarrow",
+                    color: .green,
+                    font: .headline
+                )
             }
 
             if !state.installStatusTitle.isEmpty {
                 InstallStatusPanel(state: state)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Install CLI adds the terminal command for users who prefer command-line Codex.", systemImage: "terminal")
-                    Label("Install ChatGPT Desktop downloads, mounts, copies, and unmounts the Apple Silicon app image.", systemImage: "macwindow.badge.plus")
-                    Label("Continue Without Codex still writes and tests the UNC config first.", systemImage: "arrow.right.circle")
+                    AlignedIconText("Install CLI adds the terminal command for users who prefer command-line Codex.", systemImage: "terminal")
+                    AlignedIconText("Install ChatGPT Desktop downloads, mounts, copies, and unmounts the Apple Silicon app image.", systemImage: "macwindow.badge.plus")
+                    AlignedIconText("Continue Without Codex still writes and tests the UNC config first.", systemImage: "arrow.right.circle")
                 }
-                .foregroundStyle(.secondary)
                 .padding(14)
                 .frame(maxWidth: 720, alignment: .leading)
                 .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -135,6 +140,7 @@ struct InstallDesktopAppView: View {
                 Image(systemName: desktopInstalled ? "checkmark.circle.fill" : "clock.badge.checkmark")
                     .font(.system(size: 38, weight: .semibold))
                     .foregroundStyle(desktopInstalled ? .green : .orange)
+                    .frame(width: 48, height: 48, alignment: .top)
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(desktopInstalled ? "ChatGPT Desktop was found." : "Waiting for ChatGPT Desktop.")
@@ -155,11 +161,16 @@ struct InstallDesktopAppView: View {
             )
 
             VStack(alignment: .leading, spacing: 8) {
-                Label(setupComplete ? "UNC config setup is complete." : "ChatGPT Desktop can be installed before UNC config setup.", systemImage: setupComplete ? "checkmark.seal.fill" : "macwindow.badge.plus")
-                Label("Codex may ask the user to open or sign in the first time it launches.", systemImage: desktopInstalled ? "macwindow.and.cursorarrow" : "macwindow.badge.plus")
-                Label("The installer will not close itself until you finish from the next screen.", systemImage: "lock.open.display")
+                AlignedIconText(
+                    setupComplete ? "UNC config setup is complete." : "ChatGPT Desktop can be installed before UNC config setup.",
+                    systemImage: setupComplete ? "checkmark.seal.fill" : "macwindow.badge.plus"
+                )
+                AlignedIconText(
+                    "Codex may ask the user to open or sign in the first time it launches.",
+                    systemImage: desktopInstalled ? "macwindow.and.cursorarrow" : "macwindow.badge.plus"
+                )
+                AlignedIconText("The installer will not close itself until you finish from the next screen.", systemImage: "lock.open.display")
             }
-            .foregroundStyle(.secondary)
 
             if let path = state.detection?.desktopAppPath {
                 InfoRow(

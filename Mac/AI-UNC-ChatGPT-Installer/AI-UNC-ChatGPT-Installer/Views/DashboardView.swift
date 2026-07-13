@@ -83,7 +83,7 @@ struct DashboardView: View {
                 passed: state.dashboardSnapshot.configSummary.exists
             )
             InfoRow(
-                title: "Workspace",
+                title: "Project parent",
                 value: state.workspaceDirectoryPath,
                 systemImage: "folder",
                 passed: true
@@ -149,7 +149,7 @@ struct DashboardView: View {
                     Button {
                         Task { await state.openCodexDesktopApp(); await state.refreshDashboard() }
                     } label: {
-                        Label("Open ChatGPT Desktop", systemImage: "macwindow.and.cursorarrow")
+                        actionLabel("Open ChatGPT Desktop", systemImage: "macwindow.and.cursorarrow")
                     }
                 }
 
@@ -157,76 +157,97 @@ struct DashboardView: View {
                     Button {
                         Task { await state.openCodexCLI(); await state.refreshDashboard() }
                     } label: {
-                        Label("Open Codex CLI", systemImage: "terminal.fill")
+                        actionLabel("Open Codex CLI", systemImage: "terminal.fill")
                     }
                 }
 
                 Button {
                     pendingInstallWarning = .desktopApp
                 } label: {
-                    Label(state.codexDesktopInstallButtonTitle, systemImage: "macwindow.badge.plus")
+                    actionLabel(state.codexDesktopInstallButtonTitle, systemImage: "macwindow.badge.plus")
                 }
 
                 Button {
                     pendingInstallWarning = .cli
                 } label: {
-                    Label(state.codexCLIInstallButtonTitle, systemImage: "terminal")
+                    actionLabel(state.codexCLIInstallButtonTitle, systemImage: "terminal")
                 }
 
                 Button {
                     Task { await state.testConnection(); await state.refreshDashboard() }
                 } label: {
-                    Label("Test Connection", systemImage: "bolt.horizontal.circle")
+                    actionLabel("Test Connection", systemImage: "bolt.horizontal.circle")
                 }
 
                 Button {
                     state.openConfigFolder()
                 } label: {
-                    Label("Open Config Folder", systemImage: "folder")
+                    actionLabel("Open Config Folder", systemImage: "folder")
                 }
 
                 Button {
                     state.openWorkspaceFolder()
                 } label: {
-                    Label("Open Workspace", systemImage: "folder.fill")
+                    actionLabel("Open Folder", systemImage: "folder.fill")
                 }
 
                 Button {
                     state.revealBackup()
                 } label: {
-                    Label("Reveal Backup", systemImage: "archivebox")
+                    actionLabel("Reveal Backup", systemImage: "archivebox")
                 }
 
                 Button {
                     Task { await state.reloadLaunchAgent() }
                 } label: {
-                    Label("Reload LaunchAgent", systemImage: "arrow.triangle.2.circlepath")
+                    actionLabel("Reload LaunchAgent", systemImage: "arrow.triangle.2.circlepath")
                 }
 
                 Button {
                     state.reconfigureAPIKey()
                 } label: {
-                    Label("Reconfigure API Key", systemImage: "key")
+                    actionLabel("Reconfigure API Key", systemImage: "key")
                 }
 
                 Button {
                     Task { await state.resetCodexConfigFromDashboard() }
                 } label: {
-                    Label("Reset Codex Config", systemImage: "doc.badge.gearshape")
+                    actionLabel("Reset Codex Config", systemImage: "doc.badge.gearshape")
                 }
+
+                Button(role: .destructive) {
+                    Task { await state.uninstallCodexDesktopApp() }
+                } label: {
+                    actionLabel("Uninstall Desktop", systemImage: "macwindow")
+                }
+                .disabled(state.dashboardSnapshot.installation?.isDesktopInstalled != true || state.isBusy)
+
+                Button(role: .destructive) {
+                    Task { await state.uninstallCodexCLI() }
+                } label: {
+                    actionLabel("Uninstall CLI", systemImage: "terminal")
+                }
+                .disabled(state.dashboardSnapshot.installation?.isCLIInstalled != true || state.isBusy)
 
                 Button(role: .destructive) {
                     state.prepareResetEverything()
                 } label: {
-                    Label("Reset Everything", systemImage: "trash")
+                    actionLabel("Reset Everything", systemImage: "trash")
+                }
+
+                Button(role: .destructive) {
+                    Task { await state.uninstallAllUNCSetup() }
+                } label: {
+                    actionLabel("Uninstall All", systemImage: "trash.slash")
                 }
 
                 Button {
                     Task { await state.runDiagnostics() }
                 } label: {
-                    Label("Run Diagnostics", systemImage: "stethoscope")
+                    actionLabel("Run Diagnostics", systemImage: "stethoscope")
                 }
             }
+            .buttonStyle(.bordered)
             .disabled(state.isBusy)
 
             if !state.installStatusTitle.isEmpty {
@@ -249,18 +270,15 @@ struct DashboardView: View {
 
             switch state.dashboardSnapshot.recommendedStatus {
             case .upToDate:
-                Label("Codex config uses approved UNC settings.", systemImage: "checkmark.seal.fill")
-                    .foregroundStyle(.secondary)
+                AlignedIconText("Codex config uses approved UNC settings.", systemImage: "checkmark.seal.fill")
 
             case .missingConfig:
-                Label("No Codex config was found. Run Recommended Setup to create one.", systemImage: "doc.badge.plus")
-                    .foregroundStyle(.secondary)
+                AlignedIconText("No Codex config was found. Run Recommended Setup to create one.", systemImage: "doc.badge.plus")
 
             case .updateAvailable(let mismatches):
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(mismatches, id: \.self) { mismatch in
-                        Label(mismatch, systemImage: "arrow.right.circle")
-                            .foregroundStyle(.secondary)
+                        AlignedIconText(mismatch, systemImage: "arrow.right.circle")
                     }
                 }
 
@@ -306,5 +324,11 @@ struct DashboardView: View {
             return false
         }
         return model.supportedReasoningEfforts.isEmpty ? false : model.supportedReasoningEfforts.contains(effort)
+    }
+
+    private func actionLabel(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

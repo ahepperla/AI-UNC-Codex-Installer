@@ -11,7 +11,7 @@ $script:InstallerBuildDate = '2026-07-12'
 $script:EnvKey = 'UNC_AZURE_API_KEY'
 $script:DefaultModel = 'gpt-5.5'
 $script:ModelOptions = @(
-    [pscustomobject]@{ Deployment = 'gpt-5.5'; Label = 'gpt-5.5 Recommended'; Reasoning = @('minimal', 'low', 'medium', 'high', 'xhigh'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.5'; Label = 'gpt-5.5'; Reasoning = @('minimal', 'low', 'medium', 'high', 'xhigh'); DefaultReasoning = 'medium' },
     [pscustomobject]@{ Deployment = 'gpt-5.4'; Label = 'gpt-5.4'; Reasoning = @(); DefaultReasoning = $null },
     [pscustomobject]@{ Deployment = 'gpt-5.4-mini'; Label = 'gpt-5.4-mini'; Reasoning = @(); DefaultReasoning = $null },
     [pscustomobject]@{ Deployment = 'gpt-5.4-nano'; Label = 'gpt-5.4-nano'; Reasoning = @(); DefaultReasoning = $null },
@@ -66,6 +66,7 @@ $script:ConfigPath = Join-Path $script:CodexHome 'config.toml'
 $script:LogPath = Join-Path $script:SupportDirectory 'windows-installer.log'
 $script:ReceiptPath = Join-Path $script:SupportDirectory 'setup-receipt.txt'
 $script:WorkspaceSettingPath = Join-Path $script:SupportDirectory 'workspace-path.txt'
+$script:ModelCatalogPath = Join-Path $script:SupportDirectory 'model-catalog.json'
 $script:WorkspacePath = $null
 
 $script:Form = $null
@@ -142,14 +143,54 @@ function Copy-FileAtomic {
     }
 }
 
-function Get-DefaultCodexWorkspacePath {
+function Get-DocumentsPath {
     $documents = [Environment]::GetFolderPath('MyDocuments')
     if (-not $documents -or $documents.Trim().Length -eq 0) {
         $documents = Join-Path $env:USERPROFILE 'Documents'
     }
 
-    $legacyCodexWorkspace = Join-Path $documents 'Codex'
+    return $documents
+}
+
+function Get-LegacyCodexWorkspacePath {
+    return Join-Path (Get-DocumentsPath) 'Codex'
+}
+
+function Normalize-CodexWorkspacePath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $expanded = [Environment]::ExpandEnvironmentVariables($Path)
+    $legacyCodexWorkspace = Get-LegacyCodexWorkspacePath
+    $oldChildDefault = Join-Path $legacyCodexWorkspace 'ChatGPT'
+    $separator = [System.IO.Path]::DirectorySeparatorChar
+    $normalizedPath = [System.IO.Path]::GetFullPath($expanded).TrimEnd($separator)
+    $normalizedOldChildDefault = [System.IO.Path]::GetFullPath($oldChildDefault).TrimEnd($separator)
+
+    if ($normalizedPath -ieq $normalizedOldChildDefault) {
+        return $legacyCodexWorkspace
+    }
+
+    return $expanded
+}
+
+function Remove-StaleEmptyChildWorkspace {
+    $oldChildDefault = Join-Path (Get-LegacyCodexWorkspacePath) 'ChatGPT'
+    if (-not (Test-Path -LiteralPath $oldChildDefault -PathType Container)) {
+        return
+    }
+
+    $children = @(Get-ChildItem -LiteralPath $oldChildDefault -Force -ErrorAction SilentlyContinue)
+    if ($children.Count -eq 0) {
+        Remove-Item -LiteralPath $oldChildDefault -Force -ErrorAction SilentlyContinue
+        Write-Log "Removed empty stale project folder $oldChildDefault."
+    }
+}
+
+function Get-DefaultCodexWorkspacePath {
+    $documents = Get-DocumentsPath
+    $legacyCodexWorkspace = Get-LegacyCodexWorkspacePath
     if (Test-Path -LiteralPath $legacyCodexWorkspace -PathType Container) {
+        Remove-StaleEmptyChildWorkspace
         return $legacyCodexWorkspace
     }
 
@@ -159,23 +200,23 @@ function Get-DefaultCodexWorkspacePath {
 function Test-IsLegacyCodexWorkspacePath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
-    $documents = [Environment]::GetFolderPath('MyDocuments')
-    if (-not $documents -or $documents.Trim().Length -eq 0) {
-        $documents = Join-Path $env:USERPROFILE 'Documents'
-    }
-
-    $legacyCodexWorkspace = Join-Path $documents 'Codex'
+    $legacyCodexWorkspace = Get-LegacyCodexWorkspacePath
     $separator = [System.IO.Path]::DirectorySeparatorChar
     $normalizedPath = [System.IO.Path]::GetFullPath($Path).TrimEnd($separator)
     $normalizedLegacyPath = [System.IO.Path]::GetFullPath($legacyCodexWorkspace).TrimEnd($separator)
-    return ($normalizedPath -ieq $normalizedLegacyPath)
+    if ($normalizedPath -ieq $normalizedLegacyPath) {
+        return $true
+    }
+
+    $parentPath = [System.IO.Path]::GetDirectoryName($normalizedPath)
+    return ($parentPath -and $parentPath.TrimEnd($separator) -ieq $normalizedLegacyPath)
 }
 
 function Get-WorkspaceDisplayText {
     param([Parameter(Mandatory = $true)][string]$Path)
 
-    if ((Test-IsLegacyCodexWorkspacePath -Path $Path) -and (Test-Path -LiteralPath $Path -PathType Container)) {
-        return ('{0} (existing Documents\Codex folder)' -f $Path)
+    if (Test-IsLegacyCodexWorkspacePath -Path $Path) {
+        return ('{0} (Documents\Codex parent)' -f $Path)
     }
 
     return $Path
@@ -186,7 +227,14 @@ function Get-CodexWorkspacePath {
         if (Test-Path -LiteralPath $script:WorkspaceSettingPath) {
             $saved = (Get-Content -Path $script:WorkspaceSettingPath -Raw -ErrorAction Stop).Trim()
             if ($saved.Length -gt 0) {
-                return [Environment]::ExpandEnvironmentVariables($saved)
+                $expanded = [Environment]::ExpandEnvironmentVariables($saved)
+                $normalized = Normalize-CodexWorkspacePath -Path $expanded
+                if ($normalized -ne $expanded) {
+                    Set-TextFileAtomic -Path $script:WorkspaceSettingPath -Value ($normalized + [Environment]::NewLine)
+                    Write-Log "Migrated project parent from $expanded to $normalized."
+                }
+                Remove-StaleEmptyChildWorkspace
+                return $normalized
             }
         }
     } catch {
@@ -199,12 +247,12 @@ function Get-CodexWorkspacePath {
 function Set-CodexWorkspacePath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
-    $expanded = [Environment]::ExpandEnvironmentVariables($Path)
+    $expanded = Normalize-CodexWorkspacePath -Path $Path
     Ensure-Directory -Path $script:SupportDirectory
     Set-TextFileAtomic -Path $script:WorkspaceSettingPath -Value ($expanded + [Environment]::NewLine)
     $script:WorkspacePath = $expanded
     Update-WorkspaceDisplay
-    Write-Log "Workspace set to $script:WorkspacePath."
+    Write-Log "Project parent set to $script:WorkspacePath."
 }
 
 function Reset-CodexWorkspacePath {
@@ -214,14 +262,14 @@ function Reset-CodexWorkspacePath {
 
     $script:WorkspacePath = Get-CodexWorkspacePath
     Update-WorkspaceDisplay
-    Write-Log "Workspace reset to $script:WorkspacePath."
+    Write-Log "Project parent reset to $script:WorkspacePath."
 }
 
 function Ensure-CodexWorkspace {
     $script:WorkspacePath = Get-CodexWorkspacePath
     Ensure-Directory -Path $script:WorkspacePath
     Update-WorkspaceDisplay
-    Write-Log "Workspace ready at $script:WorkspacePath."
+    Write-Log "Project parent folder ready at $script:WorkspacePath."
     return $script:WorkspacePath
 }
 
@@ -240,7 +288,7 @@ function Update-WorkspaceDisplay {
 
 function Choose-CodexWorkspace {
     $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-    $dialog.Description = 'Choose the folder ChatGPT Desktop or Codex CLI should use as its workspace.'
+    $dialog.Description = 'Choose the project parent folder for explicit folder or CLI actions.'
     $dialog.ShowNewFolderButton = $true
 
     $currentPath = if ($script:WorkspacePath) { $script:WorkspacePath } else { Get-CodexWorkspacePath }
@@ -429,7 +477,8 @@ function Invoke-GuiAction {
 function Invoke-ExternalCommand {
     param(
         [Parameter(Mandatory = $true)][string]$FilePath,
-        [string[]]$Arguments = @()
+        [string[]]$Arguments = @(),
+        [hashtable]$Environment = @{}
     )
 
     Write-Log ("Running: {0} {1}" -f $FilePath, ($Arguments -join ' '))
@@ -464,13 +513,50 @@ function Invoke-ExternalCommand {
     $processInfo.RedirectStandardOutput = $true
     $processInfo.RedirectStandardError = $true
     $processInfo.CreateNoWindow = $true
+    foreach ($key in $Environment.Keys) {
+        $processInfo.EnvironmentVariables[$key] = [string]$Environment[$key]
+    }
+
+    $standardOutputBuilder = New-Object System.Text.StringBuilder
+    $standardErrorBuilder = New-Object System.Text.StringBuilder
+    $standardOutputComplete = New-Object System.Threading.AutoResetEvent($false)
+    $standardErrorComplete = New-Object System.Threading.AutoResetEvent($false)
 
     $process = New-Object System.Diagnostics.Process
     $process.StartInfo = $processInfo
-    $process.Start() | Out-Null
-    $standardOutput = $process.StandardOutput.ReadToEnd()
-    $standardError = $process.StandardError.ReadToEnd()
-    $process.WaitForExit()
+    $process.add_OutputDataReceived({
+        param($sender, $eventArgs)
+
+        if ($null -eq $eventArgs.Data) {
+            [void]$standardOutputComplete.Set()
+        } else {
+            [void]$standardOutputBuilder.AppendLine($eventArgs.Data)
+        }
+    })
+    $process.add_ErrorDataReceived({
+        param($sender, $eventArgs)
+
+        if ($null -eq $eventArgs.Data) {
+            [void]$standardErrorComplete.Set()
+        } else {
+            [void]$standardErrorBuilder.AppendLine($eventArgs.Data)
+        }
+    })
+
+    try {
+        $process.Start() | Out-Null
+        $process.BeginOutputReadLine()
+        $process.BeginErrorReadLine()
+        $process.WaitForExit()
+        [void]$standardOutputComplete.WaitOne()
+        [void]$standardErrorComplete.WaitOne()
+    } finally {
+        $standardOutputComplete.Dispose()
+        $standardErrorComplete.Dispose()
+    }
+
+    $standardOutput = $standardOutputBuilder.ToString()
+    $standardError = $standardErrorBuilder.ToString()
 
     $output = ($standardOutput + [Environment]::NewLine + $standardError).Trim()
     $exitCode = $process.ExitCode
@@ -482,6 +568,8 @@ function Invoke-ExternalCommand {
     return [pscustomobject]@{
         ExitCode = [int]$exitCode
         Output = $output
+        StandardOutput = $standardOutput
+        StandardError = $standardError
         Succeeded = ([int]$exitCode -eq 0)
     }
 }
@@ -850,6 +938,105 @@ function Save-ApiKeyToUserEnvironment {
     Write-Log ('{0} was saved as a user environment variable.' -f $script:EnvKey)
 }
 
+function Set-JsonProperty {
+    param(
+        [Parameter(Mandatory = $true)][object]$InputObject,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][AllowNull()][object]$Value
+    )
+
+    $property = $InputObject.PSObject.Properties[$Name]
+    if ($property -ne $null) {
+        $property.Value = $Value
+    } else {
+        Add-Member -InputObject $InputObject -NotePropertyName $Name -NotePropertyValue $Value
+    }
+}
+
+function Write-ModelCatalog {
+    Ensure-Directory -Path $script:SupportDirectory
+
+    $cliPath = Get-CodexCliPath
+    if (-not $cliPath) {
+        Write-Log 'Codex CLI was not found, so the model picker restriction was skipped.'
+        return $false
+    }
+
+    $tempCodexHome = Join-Path ([System.IO.Path]::GetTempPath()) ('ai-unc-codex-home-{0}' -f [guid]::NewGuid().ToString('N'))
+    try {
+        Ensure-Directory -Path $tempCodexHome
+        $result = Invoke-ExternalCommand `
+            -FilePath $cliPath `
+            -Arguments @('debug', 'models') `
+            -Environment @{ CODEX_HOME = $tempCodexHome }
+
+        if (-not $result.Succeeded -or -not $result.StandardOutput -or $result.StandardOutput.Trim().Length -eq 0) {
+            Write-Log 'Codex did not return a model catalog, so the model picker restriction was skipped.'
+            return $false
+        }
+
+        try {
+            $catalog = $result.StandardOutput | ConvertFrom-Json
+        } catch {
+            Write-Log ('Could not parse Codex model catalog JSON: {0}' -f $_.Exception.Message)
+            return $false
+        }
+
+        $modelsProperty = $catalog.PSObject.Properties['models']
+        if ($modelsProperty -eq $null -or $modelsProperty.Value -eq $null) {
+            Write-Log 'Codex model catalog did not include a models list, so the picker restriction was skipped.'
+            return $false
+        }
+
+        $approvedByDeployment = @{}
+        foreach ($modelOption in $script:ModelOptions) {
+            $approvedByDeployment[$modelOption.Deployment] = $modelOption
+        }
+
+        $filteredModels = @()
+        foreach ($model in @($modelsProperty.Value)) {
+            $slugProperty = $model.PSObject.Properties['slug']
+            if ($slugProperty -eq $null) {
+                continue
+            }
+
+            $slug = [string]$slugProperty.Value
+            if (-not $approvedByDeployment.ContainsKey($slug)) {
+                continue
+            }
+
+            $modelOption = $approvedByDeployment[$slug]
+            $description = if ($slug -eq $script:DefaultModel) { 'Recommended UNC model for ChatGPT/Codex work.' } else { 'Approved UNC ChatGPT/Codex model.' }
+            $displayName = if ($slug -eq $script:DefaultModel) { $modelOption.Deployment } else { $modelOption.Label }
+            Set-JsonProperty -InputObject $model -Name 'display_name' -Value $displayName
+            Set-JsonProperty -InputObject $model -Name 'description' -Value $description
+            Set-JsonProperty -InputObject $model -Name 'priority' -Value $filteredModels.Count
+            $filteredModels += $model
+        }
+
+        if ($filteredModels.Count -eq 0) {
+            Write-Log 'No approved UNC models were present in the current Codex catalog, so the picker restriction was skipped.'
+            return $false
+        }
+
+        Set-JsonProperty -InputObject $catalog -Name 'fetched_at' -Value ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))
+        Set-JsonProperty -InputObject $catalog -Name 'models' -Value $filteredModels
+        Set-JsonProperty -InputObject $catalog -Name 'source' -Value 'AI @ UNC ChatGPT Installer filtered from Codex catalog'
+
+        $json = ($catalog | ConvertTo-Json -Depth 32) + [Environment]::NewLine
+        Set-TextFileAtomic -Path $script:ModelCatalogPath -Value $json
+        Write-Log "Wrote UNC model catalog at $script:ModelCatalogPath."
+        return $true
+    } catch {
+        Write-Log ('Could not write model catalog, so the picker restriction was skipped: {0}' -f $_.Exception.Message)
+        return $false
+    } finally {
+        if (Test-Path -LiteralPath $tempCodexHome) {
+            Remove-Item -LiteralPath $tempCodexHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 function Write-CodexConfig {
     param(
         [Parameter(Mandatory = $true)][string]$ApiKey,
@@ -857,6 +1044,7 @@ function Write-CodexConfig {
     )
 
     Backup-CodexConfig | Out-Null
+    $modelCatalogWritten = Write-ModelCatalog
     $selectedModel = Get-SelectedModelDeployment
     $script:Model = $selectedModel
     $quotedModel = ConvertTo-TomlString -Value $selectedModel
@@ -870,6 +1058,9 @@ function Write-CodexConfig {
         $configLines += ('model_reasoning_effort = "{0}"' -f (ConvertTo-TomlString -Value $reasoningEffort))
     }
 
+    if ($modelCatalogWritten) {
+        $configLines += ('model_catalog_json = "{0}"' -f (ConvertTo-TomlString -Value $script:ModelCatalogPath))
+    }
     $configLines += ''
     $configLines += '[model_providers.azure]'
     $configLines += 'name = "Azure OpenAI"'
@@ -1013,14 +1204,15 @@ function Save-SetupReceipt {
         ('- Endpoint test: {0}' -f $endpointStatus),
         ('- ChatGPT Desktop: {0}' -f $desktopStatus),
         ('- Codex CLI: {0}' -f $cliStatus),
-        ('- Workspace: {0}' -f $workspace),
+        ('- Project parent: {0}' -f $workspace),
         '',
         ('Windows user: {0}' -f $env:USERNAME),
         ('Computer: {0}' -f $env:COMPUTERNAME),
         ('Codex home: {0}' -f $script:CodexHome),
         ('Codex home source: {0}' -f $script:CodexHomeSource),
         ('Config path: {0}' -f $script:ConfigPath),
-        ('Workspace: {0}' -f $workspace),
+        ('Model catalog path: {0}' -f $script:ModelCatalogPath),
+        ('Project parent: {0}' -f $workspace),
         ('Model: {0}' -f $configuredModel),
         ('Reasoning effort: {0}' -f $reasoningEffort),
         ('Environment key: {0}' -f $script:EnvKey),
@@ -1037,9 +1229,8 @@ function Save-SetupReceipt {
 function Start-CodexDesktop {
     param([Parameter(Mandatory = $true)][object]$Detection)
 
-    $workspace = Ensure-CodexWorkspace
     Write-Log ('Opening ChatGPT desktop app: {0}' -f $Detection.DesktopAppName)
-    Write-Log "Workspace is $workspace. Choose that folder in ChatGPT if prompted."
+    Write-Log 'Opening the app without sending a workspace path.'
     Start-Process explorer.exe -ArgumentList ('shell:AppsFolder\{0}' -f $Detection.DesktopAppId)
 }
 
@@ -1121,7 +1312,7 @@ function Save-SupportReport {
         ('Codex home: {0}' -f $script:CodexHome),
         ('Codex home source: {0}' -f $script:CodexHomeSource),
         ('Config path: {0}' -f $script:ConfigPath),
-        ('Workspace: {0}' -f $(if ($script:WorkspacePath) { $script:WorkspacePath } else { Get-CodexWorkspacePath })),
+        ('Project parent: {0}' -f $(if ($script:WorkspacePath) { $script:WorkspacePath } else { Get-CodexWorkspacePath })),
         ('Model: {0}' -f $configuredModel),
         ('Reasoning effort: {0}' -f $reasoningEffort),
         ('Config exists: {0}' -f $(if ($configExists) { 'yes' } else { 'no' })),
@@ -1138,7 +1329,7 @@ function Save-SupportReport {
 }
 
 function Reset-Changes {
-    $resetMessage = "Reset UNC ChatGPT/Codex changes for this Windows user?`r`n`r`nThis removes UNC_AZURE_API_KEY and restores the newest config backup when available. It does not delete the workspace folder or user files."
+    $resetMessage = "Reset UNC ChatGPT/Codex changes for this Windows user?`r`n`r`nThis removes UNC_AZURE_API_KEY and restores the newest config backup when available. It does not delete project parent folders or user files."
     if (-not (Confirm-Action -Message $resetMessage)) {
         return
     }
@@ -1172,7 +1363,156 @@ function Reset-Changes {
         Write-Log 'No Codex config was present.'
     }
 
-    Show-Info -Message 'Reset complete. The workspace folder and user files were not deleted.'
+    Show-Info -Message 'Reset complete. Project parent folders and user files were not deleted.'
+}
+
+function Test-SafeCliRemovalPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $localCodexRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\OpenAI\Codex'
+    $localCodexRoot = [System.IO.Path]::GetFullPath($localCodexRoot)
+    $homeLocalBin = [System.IO.Path]::GetFullPath((Join-Path $env:USERPROFILE '.local\bin\codex'))
+    $homeLocalBinExe = [System.IO.Path]::GetFullPath((Join-Path $env:USERPROFILE '.local\bin\codex.exe'))
+    $separator = [System.IO.Path]::DirectorySeparatorChar
+
+    return (
+        $fullPath.StartsWith($localCodexRoot.TrimEnd($separator) + $separator, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.Equals($homeLocalBin, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $fullPath.Equals($homeLocalBinExe, [System.StringComparison]::OrdinalIgnoreCase)
+    )
+}
+
+function Uninstall-ChatGPTDesktop {
+    param([bool]$Prompt = $true)
+
+    if ($Prompt -and -not (Confirm-Action -Message "Uninstall ChatGPT Desktop?`r`n`r`nThis asks Windows to uninstall the ChatGPT app when it is registered through the Microsoft Store or winget.")) {
+        return
+    }
+
+    $detection = Get-CodexDetection
+    if (-not $detection.DesktopAppId) {
+        Write-Log 'ChatGPT Desktop was not detected.'
+        if ($Prompt) { Show-Info -Message 'ChatGPT Desktop was not detected.' }
+        return
+    }
+
+    $winget = Get-Command 'winget.exe' -ErrorAction SilentlyContinue
+    if ($winget -ne $null) {
+        Write-Log 'Attempting ChatGPT Desktop uninstall with winget Store product ID.'
+        $result = Invoke-ExternalCommand -FilePath $winget.Source -Arguments @(
+            'uninstall',
+            '--id',
+            '9PLM9XGG6VKS',
+            '-s',
+            'msstore',
+            '--accept-source-agreements'
+        )
+
+        if (-not $result.Succeeded) {
+            Write-Log 'Store product ID uninstall did not finish. Trying ChatGPT app name.'
+            $result = Invoke-ExternalCommand -FilePath $winget.Source -Arguments @(
+                'uninstall',
+                'ChatGPT',
+                '-s',
+                'msstore',
+                '--accept-source-agreements'
+            )
+        }
+
+        $detection = Wait-CodexDetection -TimeoutSeconds 20
+        if (-not $detection.DesktopAppId) {
+            Write-Log 'ChatGPT Desktop is no longer detected.'
+            if ($Prompt) { Show-Info -Message 'ChatGPT Desktop is no longer detected.' }
+            return
+        }
+
+        Write-Log 'ChatGPT Desktop is still detected after winget uninstall attempt.'
+    } else {
+        Write-Log 'winget was not found, so automatic ChatGPT Desktop uninstall is not available.'
+    }
+
+    Start-Process 'ms-settings:appsfeatures'
+    if ($Prompt) {
+        Show-Info -Message 'Windows app settings were opened. Remove ChatGPT there if it is still installed.'
+    }
+}
+
+function Uninstall-CodexCli {
+    param([bool]$Prompt = $true)
+
+    if ($Prompt -and -not (Confirm-Action -Message "Uninstall Codex CLI?`r`n`r`nThis removes the standalone Codex CLI only when it is installed in a known user-owned location.")) {
+        return
+    }
+
+    $cliPath = Get-CodexCliPath
+    if (-not $cliPath) {
+        Write-Log 'Codex CLI was not detected.'
+        if ($Prompt) { Show-Info -Message 'Codex CLI was not detected.' }
+        return
+    }
+
+    if (-not (Test-SafeCliRemovalPath -Path $cliPath)) {
+        $message = "Codex CLI was found at $cliPath, which is not a known standalone install path. Use its package manager to uninstall it."
+        Write-Log $message
+        if ($Prompt) { Show-Warning -Message $message }
+        return
+    }
+
+    $localCodexRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\OpenAI\Codex'
+    if ([System.IO.Path]::GetFullPath($cliPath).StartsWith([System.IO.Path]::GetFullPath($localCodexRoot), [System.StringComparison]::OrdinalIgnoreCase)) {
+        Remove-Item -LiteralPath $localCodexRoot -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Log "Removed Codex CLI folder at $localCodexRoot."
+    } else {
+        Remove-Item -LiteralPath $cliPath -Force -ErrorAction SilentlyContinue
+        Write-Log "Removed Codex CLI at $cliPath."
+    }
+
+    Update-CodexActionButtons -Detection (Get-CodexDetection)
+    if ($Prompt) { Show-Info -Message 'Codex CLI uninstall complete.' }
+}
+
+function Restore-OrRemove-CodexConfigForUninstall {
+    Ensure-Directory -Path $script:CodexHome
+    $originalBackup = Get-ChildItem -LiteralPath $script:CodexHome -Filter 'config.toml.backup.*' -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime |
+        Select-Object -First 1
+
+    if ($originalBackup -ne $null) {
+        Copy-FileAtomic -SourcePath $originalBackup.FullName -DestinationPath $script:ConfigPath
+        return "Restored Codex config from $($originalBackup.Name)."
+    }
+
+    if (Test-Path -LiteralPath $script:ConfigPath) {
+        $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+        $removedPath = Join-Path $script:CodexHome "config.toml.removed.$stamp"
+        Move-Item -LiteralPath $script:ConfigPath -Destination $removedPath -Force
+        return "Moved current config to $removedPath."
+    }
+
+    return 'No Codex config was present.'
+}
+
+function Uninstall-UncSetup {
+    $message = "Uninstall all UNC ChatGPT/Codex setup for this Windows user?`r`n`r`nThis removes UNC_AZURE_API_KEY, restores or removes the active Codex config, removes installer support files, and tries to remove ChatGPT Desktop and standalone Codex CLI. Project parent folders and user files are not deleted."
+    if (-not (Confirm-Action -Message $message)) {
+        return
+    }
+
+    Uninstall-ChatGPTDesktop -Prompt $false
+    Uninstall-CodexCli -Prompt $false
+
+    [Environment]::SetEnvironmentVariable($script:EnvKey, $null, 'User')
+    Remove-Item -Path "Env:\$($script:EnvKey)" -ErrorAction SilentlyContinue
+    Broadcast-EnvironmentChanged
+    $configMessage = Restore-OrRemove-CodexConfigForUninstall
+    Update-CodexActionButtons -Detection (Get-CodexDetection)
+
+    if (Test-Path -LiteralPath $script:SupportDirectory) {
+        Remove-Item -LiteralPath $script:SupportDirectory -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    Show-Info -Message "UNC ChatGPT/Codex uninstall complete.`r`n`r`n$configMessage`r`n`r`nProject parent folders and user files were not deleted."
 }
 
 function Get-SetupCompleteMessage {
@@ -1189,7 +1529,7 @@ function Get-SetupCompleteMessage {
         '- API key saved/configured.',
         '- UNC config written.',
         '- Endpoint test succeeded.',
-        ('- Workspace: {0}' -f $(if ($script:WorkspacePath) { $script:WorkspacePath } else { Get-CodexWorkspacePath })),
+        ('- Project parent: {0}' -f $(if ($script:WorkspacePath) { $script:WorkspacePath } else { Get-CodexWorkspacePath })),
         ('- ChatGPT Desktop: {0}' -f $(if ($Detection.DesktopAppName) { 'detected' } else { 'not detected' })),
         ('- Codex CLI: {0}' -f $(if ($Detection.CliPath) { 'detected' } else { 'not detected' }))
     ) -join "`r`n"
@@ -1202,7 +1542,9 @@ function Run-FullSetup {
     }
 
     Write-Log 'Starting recommended setup.'
-    Ensure-CodexWorkspace | Out-Null
+    $script:WorkspacePath = Get-CodexWorkspacePath
+    Update-WorkspaceDisplay
+    Write-Log "Project parent is $script:WorkspacePath."
 
     Write-CodexConfig -ApiKey $apiKey -UsePlaintextConfig $script:PlaintextConfigCheckBox.Checked
     Clear-ApiKeyInput
@@ -1247,7 +1589,9 @@ function Configure-Only {
         throw 'Paste the UNC Azure OpenAI API key before configuring Codex.'
     }
 
-    Ensure-CodexWorkspace | Out-Null
+    $script:WorkspacePath = Get-CodexWorkspacePath
+    Update-WorkspaceDisplay
+    Write-Log "Project parent is $script:WorkspacePath."
     Write-CodexConfig -ApiKey $apiKey -UsePlaintextConfig $script:PlaintextConfigCheckBox.Checked
     Clear-ApiKeyInput
     $detection = Get-CodexDetection
@@ -1292,6 +1636,8 @@ function New-Button {
     $button.Location = New-Object System.Drawing.Point($X, $Y)
     $button.Size = New-Object System.Drawing.Size($Width, $Height)
     $button.UseVisualStyleBackColor = $true
+    $button.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+    $button.AutoEllipsis = $true
     $Parent.Controls.Add($button)
     if ($RegisterAction) {
         $script:ActionButtons += $button
@@ -1306,14 +1652,14 @@ function Set-AdvancedVisible {
 
     if ($Visible) {
         $script:AdvancedToggleButton.Text = 'Hide Advanced Options'
-        $script:LogLabel.Location = New-Object System.Drawing.Point(22, 545)
-        $script:LogBox.Location = New-Object System.Drawing.Point(22, 570)
-        $script:LogBox.Size = New-Object System.Drawing.Size(780, 98)
+        $script:LogLabel.Location = New-Object System.Drawing.Point(24, 617)
+        $script:LogBox.Location = New-Object System.Drawing.Point(24, 642)
+        $script:LogBox.Size = New-Object System.Drawing.Size(820, 66)
     } else {
         $script:AdvancedToggleButton.Text = 'Show Advanced Options'
-        $script:LogLabel.Location = New-Object System.Drawing.Point(22, 407)
-        $script:LogBox.Location = New-Object System.Drawing.Point(22, 432)
-        $script:LogBox.Size = New-Object System.Drawing.Size(780, 236)
+        $script:LogLabel.Location = New-Object System.Drawing.Point(24, 423)
+        $script:LogBox.Location = New-Object System.Drawing.Point(24, 448)
+        $script:LogBox.Size = New-Object System.Drawing.Size(820, 260)
     }
 }
 
@@ -1322,43 +1668,44 @@ function Build-Gui {
 
     $script:Form = New-Object System.Windows.Forms.Form
     $script:Form.Text = 'AI @ UNC ChatGPT Installer for Windows'
-    $script:Form.Size = New-Object System.Drawing.Size(840, 760)
-    $script:Form.MinimumSize = New-Object System.Drawing.Size(840, 760)
+    $script:Form.Size = New-Object System.Drawing.Size(880, 800)
+    $script:Form.MinimumSize = New-Object System.Drawing.Size(880, 800)
     $script:Form.StartPosition = 'CenterScreen'
     $script:Form.Font = New-Object System.Drawing.Font('Segoe UI', 9)
+    $script:Form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
 
     $title = New-Object System.Windows.Forms.Label
     $title.Text = 'AI @ UNC ChatGPT Installer'
-    $title.Location = New-Object System.Drawing.Point(20, 15)
-    $title.Size = New-Object System.Drawing.Size(780, 30)
+    $title.Location = New-Object System.Drawing.Point(24, 15)
+    $title.Size = New-Object System.Drawing.Size(680, 30)
     $title.Font = New-Object System.Drawing.Font('Segoe UI', 16, [System.Drawing.FontStyle]::Bold)
     $script:Form.Controls.Add($title)
 
     $subtitle = New-Object System.Windows.Forms.Label
     $subtitle.Text = ('For most users: paste the API key, then click Run Recommended Setup. Installer {0} ({1}).' -f $script:InstallerVersion, $script:InstallerBuildDate)
-    $subtitle.Location = New-Object System.Drawing.Point(22, 48)
-    $subtitle.Size = New-Object System.Drawing.Size(780, 24)
+    $subtitle.Location = New-Object System.Drawing.Point(24, 48)
+    $subtitle.Size = New-Object System.Drawing.Size(820, 24)
     $subtitle.ForeColor = [System.Drawing.Color]::DimGray
     $script:Form.Controls.Add($subtitle)
 
-    $exit = New-Button -Text 'Exit' -X 728 -Y 18 -Width 74 -Height 28 -RegisterAction $false
+    $exit = New-Button -Text 'Exit' -X 784 -Y 18 -Width 74 -Height 28 -RegisterAction $false
     $exit.Add_Click({ $script:Form.Close() })
 
     $keyLabel = New-Object System.Windows.Forms.Label
     $keyLabel.Text = 'UNC Azure OpenAI API key'
-    $keyLabel.Location = New-Object System.Drawing.Point(22, 88)
+    $keyLabel.Location = New-Object System.Drawing.Point(24, 88)
     $keyLabel.Size = New-Object System.Drawing.Size(250, 22)
     $script:Form.Controls.Add($keyLabel)
 
     $script:KeyTextBox = New-Object System.Windows.Forms.TextBox
-    $script:KeyTextBox.Location = New-Object System.Drawing.Point(22, 113)
-    $script:KeyTextBox.Size = New-Object System.Drawing.Size(595, 26)
+    $script:KeyTextBox.Location = New-Object System.Drawing.Point(24, 113)
+    $script:KeyTextBox.Size = New-Object System.Drawing.Size(640, 26)
     $script:KeyTextBox.PasswordChar = '*'
     $script:Form.Controls.Add($script:KeyTextBox)
 
     $showKey = New-Object System.Windows.Forms.CheckBox
     $showKey.Text = 'Show'
-    $showKey.Location = New-Object System.Drawing.Point(630, 115)
+    $showKey.Location = New-Object System.Drawing.Point(676, 115)
     $showKey.Size = New-Object System.Drawing.Size(75, 24)
     $showKey.Add_CheckedChanged({
         if ($showKey.Checked) {
@@ -1371,14 +1718,14 @@ function Build-Gui {
 
     $recommendationBox = New-Object System.Windows.Forms.GroupBox
     $recommendationBox.Text = 'Recommended setup'
-    $recommendationBox.Location = New-Object System.Drawing.Point(22, 150)
-    $recommendationBox.Size = New-Object System.Drawing.Size(780, 205)
+    $recommendationBox.Location = New-Object System.Drawing.Point(24, 150)
+    $recommendationBox.Size = New-Object System.Drawing.Size(820, 220)
     $script:Form.Controls.Add($recommendationBox)
 
     $recommendationText = New-Object System.Windows.Forms.Label
     $recommendationText.Text = 'Saves the UNC API key, writes the recommended config, tests the endpoint, then offers ChatGPT/Codex install or open actions.'
     $recommendationText.Location = New-Object System.Drawing.Point(16, 25)
-    $recommendationText.Size = New-Object System.Drawing.Size(520, 42)
+    $recommendationText.Size = New-Object System.Drawing.Size(550, 44)
     $recommendationText.ForeColor = [System.Drawing.Color]::DimGray
     $recommendationBox.Controls.Add($recommendationText)
 
@@ -1391,7 +1738,7 @@ function Build-Gui {
     $script:ModelComboBox = New-Object System.Windows.Forms.ComboBox
     $script:ModelComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
     $script:ModelComboBox.Location = New-Object System.Drawing.Point(92, 73)
-    $script:ModelComboBox.Size = New-Object System.Drawing.Size(208, 24)
+    $script:ModelComboBox.Size = New-Object System.Drawing.Size(250, 24)
     foreach ($modelOption in $script:ModelOptions) {
         [void]$script:ModelComboBox.Items.Add($modelOption.Label)
     }
@@ -1403,46 +1750,46 @@ function Build-Gui {
 
     $reasoningLabel = New-Object System.Windows.Forms.Label
     $reasoningLabel.Text = 'Reasoning:'
-    $reasoningLabel.Location = New-Object System.Drawing.Point(318, 76)
+    $reasoningLabel.Location = New-Object System.Drawing.Point(360, 76)
     $reasoningLabel.Size = New-Object System.Drawing.Size(74, 22)
     $recommendationBox.Controls.Add($reasoningLabel)
 
     $script:ReasoningEffortComboBox = New-Object System.Windows.Forms.ComboBox
     $script:ReasoningEffortComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-    $script:ReasoningEffortComboBox.Location = New-Object System.Drawing.Point(396, 73)
-    $script:ReasoningEffortComboBox.Size = New-Object System.Drawing.Size(132, 24)
+    $script:ReasoningEffortComboBox.Location = New-Object System.Drawing.Point(438, 73)
+    $script:ReasoningEffortComboBox.Size = New-Object System.Drawing.Size(150, 24)
     $recommendationBox.Controls.Add($script:ReasoningEffortComboBox)
     Update-ReasoningOptionsForSelectedModel
 
     $workspaceCaption = New-Object System.Windows.Forms.Label
-    $workspaceCaption.Text = 'Workspace:'
+    $workspaceCaption.Text = 'Parent:'
     $workspaceCaption.Location = New-Object System.Drawing.Point(16, 110)
     $workspaceCaption.Size = New-Object System.Drawing.Size(78, 22)
     $recommendationBox.Controls.Add($workspaceCaption)
 
     $script:RecommendationWorkspacePathLabel = New-Object System.Windows.Forms.Label
     $script:RecommendationWorkspacePathLabel.Location = New-Object System.Drawing.Point(92, 110)
-    $script:RecommendationWorkspacePathLabel.Size = New-Object System.Drawing.Size(435, 22)
+    $script:RecommendationWorkspacePathLabel.Size = New-Object System.Drawing.Size(496, 22)
     $script:RecommendationWorkspacePathLabel.ForeColor = [System.Drawing.Color]::DimGray
     $script:RecommendationWorkspacePathLabel.AutoEllipsis = $true
     $recommendationBox.Controls.Add($script:RecommendationWorkspacePathLabel)
     Update-WorkspaceDisplay
 
     $script:LaunchAfterSetupCheckBox = New-Object System.Windows.Forms.CheckBox
-    $script:LaunchAfterSetupCheckBox.Text = 'Open ChatGPT Desktop after setup when detected'
+    $script:LaunchAfterSetupCheckBox.Text = 'Open ChatGPT Desktop after setup'
     $script:LaunchAfterSetupCheckBox.Location = New-Object System.Drawing.Point(18, 140)
-    $script:LaunchAfterSetupCheckBox.Size = New-Object System.Drawing.Size(258, 24)
+    $script:LaunchAfterSetupCheckBox.Size = New-Object System.Drawing.Size(310, 24)
     $script:LaunchAfterSetupCheckBox.Checked = $true
     $recommendationBox.Controls.Add($script:LaunchAfterSetupCheckBox)
 
     $script:CodexStatusLabel = New-Object System.Windows.Forms.Label
     $script:CodexStatusLabel.Text = 'Codex status: checking...'
-    $script:CodexStatusLabel.Location = New-Object System.Drawing.Point(18, 170)
-    $script:CodexStatusLabel.Size = New-Object System.Drawing.Size(520, 22)
+    $script:CodexStatusLabel.Location = New-Object System.Drawing.Point(18, 178)
+    $script:CodexStatusLabel.Size = New-Object System.Drawing.Size(570, 22)
     $script:CodexStatusLabel.ForeColor = [System.Drawing.Color]::DimGray
     $recommendationBox.Controls.Add($script:CodexStatusLabel)
 
-    $fullSetup = New-Button -Text 'Run Recommended Setup' -X 555 -Y 27 -Width 205 -Height 50 -Parent $recommendationBox
+    $fullSetup = New-Button -Text 'Run Recommended Setup' -X 600 -Y 27 -Width 200 -Height 54 -Parent $recommendationBox
     $fullSetup.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
     $fullSetup.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 212)
     $fullSetup.ForeColor = [System.Drawing.Color]::White
@@ -1450,21 +1797,21 @@ function Build-Gui {
     $fullSetup.UseVisualStyleBackColor = $false
     $fullSetup.Add_Click({ Invoke-GuiAction { Run-FullSetup } })
 
-    $script:OpenDesktopButton = New-Button -Text 'Open ChatGPT Desktop' -X 555 -Y 95 -Width 205 -Height 28 -Parent $recommendationBox
+    $script:OpenDesktopButton = New-Button -Text 'Open ChatGPT Desktop' -X 600 -Y 101 -Width 200 -Height 28 -Parent $recommendationBox
     $script:OpenDesktopButton.Add_Click({ Invoke-GuiAction { Open-CodexDesktop } })
 
-    $script:OpenCliButton = New-Button -Text 'Open Codex CLI' -X 555 -Y 132 -Width 205 -Height 28 -Parent $recommendationBox
+    $script:OpenCliButton = New-Button -Text 'Open Codex CLI' -X 600 -Y 139 -Width 200 -Height 28 -Parent $recommendationBox
     $script:OpenCliButton.Add_Click({ Invoke-GuiAction { Open-CodexCli } })
 
-    $script:AdvancedToggleButton = New-Button -Text 'Show Advanced Options' -X 22 -Y 369 -Width 180 -Height 30 -RegisterAction $false
+    $script:AdvancedToggleButton = New-Button -Text 'Show Advanced Options' -X 24 -Y 386 -Width 190 -Height 30 -RegisterAction $false
     $script:AdvancedToggleButton.Add_Click({
         Set-AdvancedVisible -Visible (-not $script:AdvancedGroupBox.Visible)
     })
 
     $script:AdvancedGroupBox = New-Object System.Windows.Forms.GroupBox
     $script:AdvancedGroupBox.Text = 'Advanced and troubleshooting'
-    $script:AdvancedGroupBox.Location = New-Object System.Drawing.Point(22, 407)
-    $script:AdvancedGroupBox.Size = New-Object System.Drawing.Size(780, 126)
+    $script:AdvancedGroupBox.Location = New-Object System.Drawing.Point(24, 424)
+    $script:AdvancedGroupBox.Size = New-Object System.Drawing.Size(820, 182)
     $script:AdvancedGroupBox.Visible = $false
     $script:Form.Controls.Add($script:AdvancedGroupBox)
 
@@ -1475,7 +1822,7 @@ function Build-Gui {
     $script:AdvancedGroupBox.Controls.Add($script:PlaintextConfigCheckBox)
 
     $advancedWorkspaceLabel = New-Object System.Windows.Forms.Label
-    $advancedWorkspaceLabel.Text = 'Workspace:'
+    $advancedWorkspaceLabel.Text = 'Parent:'
     $advancedWorkspaceLabel.Location = New-Object System.Drawing.Point(16, 52)
     $advancedWorkspaceLabel.Size = New-Object System.Drawing.Size(78, 22)
     $script:AdvancedGroupBox.Controls.Add($advancedWorkspaceLabel)
@@ -1483,52 +1830,61 @@ function Build-Gui {
     $advancedWorkspacePath = New-Object System.Windows.Forms.Label
     $advancedWorkspacePath.Text = $script:WorkspacePath
     $advancedWorkspacePath.Location = New-Object System.Drawing.Point(92, 52)
-    $advancedWorkspacePath.Size = New-Object System.Drawing.Size(430, 22)
+    $advancedWorkspacePath.Size = New-Object System.Drawing.Size(470, 22)
     $advancedWorkspacePath.ForeColor = [System.Drawing.Color]::DimGray
     $advancedWorkspacePath.AutoEllipsis = $true
     $script:AdvancedGroupBox.Controls.Add($advancedWorkspacePath)
     $script:WorkspacePathLabel = $advancedWorkspacePath
     Update-WorkspaceDisplay
 
-    $chooseWorkspace = New-Button -Text 'Choose' -X 532 -Y 48 -Width 70 -Height 26 -Parent $script:AdvancedGroupBox
+    $chooseWorkspace = New-Button -Text 'Choose' -X 572 -Y 48 -Width 70 -Height 26 -Parent $script:AdvancedGroupBox
     $chooseWorkspace.Add_Click({ Invoke-GuiAction { Choose-CodexWorkspace } })
 
-    $defaultWorkspace = New-Button -Text 'Default' -X 610 -Y 48 -Width 70 -Height 26 -Parent $script:AdvancedGroupBox
+    $defaultWorkspace = New-Button -Text 'Default' -X 650 -Y 48 -Width 70 -Height 26 -Parent $script:AdvancedGroupBox
     $defaultWorkspace.Add_Click({ Invoke-GuiAction { Reset-CodexWorkspacePath } })
 
-    $openWorkspace = New-Button -Text 'Open' -X 688 -Y 48 -Width 70 -Height 26 -Parent $script:AdvancedGroupBox
+    $openWorkspace = New-Button -Text 'Open' -X 728 -Y 48 -Width 70 -Height 26 -Parent $script:AdvancedGroupBox
     $openWorkspace.Add_Click({ Invoke-GuiAction { Open-CodexWorkspace } })
 
-    $detect = New-Button -Text 'Detect' -X 16 -Y 86 -Width 100 -Height 28 -Parent $script:AdvancedGroupBox
+    $detect = New-Button -Text 'Detect' -X 16 -Y 88 -Width 104 -Height 28 -Parent $script:AdvancedGroupBox
     $detect.Add_Click({ Invoke-GuiAction { Show-CodexDetection | Out-Null } })
 
-    $script:InstallButton = New-Button -Text 'Install Codex' -X 124 -Y 86 -Width 128 -Height 28 -Parent $script:AdvancedGroupBox
+    $script:InstallButton = New-Button -Text 'Install Codex' -X 128 -Y 88 -Width 136 -Height 28 -Parent $script:AdvancedGroupBox
     $script:InstallButton.Add_Click({ Invoke-GuiAction { Install-CodexWithWarning -Force $true | Out-Null; Show-CodexDetection | Out-Null } })
 
-    $configure = New-Button -Text 'Config Only' -X 260 -Y 86 -Width 100 -Height 28 -Parent $script:AdvancedGroupBox
+    $configure = New-Button -Text 'Config Only' -X 272 -Y 88 -Width 104 -Height 28 -Parent $script:AdvancedGroupBox
     $configure.Add_Click({ Invoke-GuiAction { Configure-Only } })
 
-    $test = New-Button -Text 'Test' -X 368 -Y 86 -Width 100 -Height 28 -Parent $script:AdvancedGroupBox
+    $test = New-Button -Text 'Test' -X 384 -Y 88 -Width 92 -Height 28 -Parent $script:AdvancedGroupBox
     $test.Add_Click({ Invoke-GuiAction { Test-ConnectionFromGui } })
 
-    $download = New-Button -Text 'Download' -X 476 -Y 86 -Width 100 -Height 28 -Parent $script:AdvancedGroupBox
+    $download = New-Button -Text 'Download' -X 484 -Y 88 -Width 104 -Height 28 -Parent $script:AdvancedGroupBox
     $download.Add_Click({ Invoke-GuiAction { Open-DownloadPage } })
 
-    $support = New-Button -Text 'Support Report' -X 584 -Y 86 -Width 104 -Height 28 -Parent $script:AdvancedGroupBox
+    $support = New-Button -Text 'Support Report' -X 596 -Y 88 -Width 120 -Height 28 -Parent $script:AdvancedGroupBox
     $support.Add_Click({ Invoke-GuiAction { Save-SupportReport } })
 
-    $reset = New-Button -Text 'Reset' -X 696 -Y 86 -Width 62 -Height 28 -Parent $script:AdvancedGroupBox
+    $reset = New-Button -Text 'Reset' -X 724 -Y 88 -Width 74 -Height 28 -Parent $script:AdvancedGroupBox
     $reset.Add_Click({ Invoke-GuiAction { Reset-Changes } })
+
+    $uninstallDesktop = New-Button -Text 'Uninstall Desktop' -X 16 -Y 130 -Width 142 -Height 28 -Parent $script:AdvancedGroupBox
+    $uninstallDesktop.Add_Click({ Invoke-GuiAction { Uninstall-ChatGPTDesktop } })
+
+    $uninstallCli = New-Button -Text 'Uninstall CLI' -X 166 -Y 130 -Width 118 -Height 28 -Parent $script:AdvancedGroupBox
+    $uninstallCli.Add_Click({ Invoke-GuiAction { Uninstall-CodexCli } })
+
+    $uninstallUnc = New-Button -Text 'Uninstall All UNC Setup' -X 292 -Y 130 -Width 190 -Height 28 -Parent $script:AdvancedGroupBox
+    $uninstallUnc.Add_Click({ Invoke-GuiAction { Uninstall-UncSetup } })
 
     $script:LogLabel = New-Object System.Windows.Forms.Label
     $script:LogLabel.Text = 'Setup log'
-    $script:LogLabel.Location = New-Object System.Drawing.Point(22, 407)
+    $script:LogLabel.Location = New-Object System.Drawing.Point(24, 423)
     $script:LogLabel.Size = New-Object System.Drawing.Size(160, 22)
     $script:Form.Controls.Add($script:LogLabel)
 
     $script:LogBox = New-Object System.Windows.Forms.TextBox
-    $script:LogBox.Location = New-Object System.Drawing.Point(22, 432)
-    $script:LogBox.Size = New-Object System.Drawing.Size(780, 236)
+    $script:LogBox.Location = New-Object System.Drawing.Point(24, 448)
+    $script:LogBox.Size = New-Object System.Drawing.Size(820, 260)
     $script:LogBox.Multiline = $true
     $script:LogBox.ScrollBars = 'Vertical'
     $script:LogBox.ReadOnly = $true
@@ -1538,14 +1894,17 @@ function Build-Gui {
 
     $footer = New-Object System.Windows.Forms.Label
     $footer.Text = 'Tip: Existing config.toml is backed up first. CODEX_HOME is respected when set; otherwise config/support files use %USERPROFILE%\.codex.'
-    $footer.Location = New-Object System.Drawing.Point(22, 688)
-    $footer.Size = New-Object System.Drawing.Size(780, 24)
+    $footer.Location = New-Object System.Drawing.Point(24, 728)
+    $footer.Size = New-Object System.Drawing.Size(820, 24)
     $footer.ForeColor = [System.Drawing.Color]::DimGray
     $footer.AutoEllipsis = $true
     $script:Form.Controls.Add($footer)
 
     Set-AdvancedVisible -Visible $false
 }
+
+[System.Windows.Forms.Application]::EnableVisualStyles()
+[System.Windows.Forms.Application]::SetCompatibleTextRenderingDefault($false)
 
 Build-Gui
 Write-Log 'Ready. Paste the UNC Azure OpenAI API key, then click Run Recommended Setup.'

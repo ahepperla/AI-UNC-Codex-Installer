@@ -30,9 +30,12 @@ struct ConnectionTestView: View {
                     }
                 }
             } else {
-                Label("Ready to POST a Responses API test request to the UNC endpoint.", systemImage: "paperplane")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
+                AlignedIconText(
+                    "Ready to POST a Responses API test request to the UNC endpoint.",
+                    systemImage: "paperplane",
+                    color: .secondary,
+                    font: .title3
+                )
             }
 
             Spacer()

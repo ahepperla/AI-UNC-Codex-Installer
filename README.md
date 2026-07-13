@@ -52,18 +52,21 @@ The script prompts for the UNC Azure OpenAI API key, lets the user keep the reco
 
 - Respect `CODEX_HOME` when it is set.
 - Use the platform default Codex home when `CODEX_HOME` is not set.
-- Create `Documents/ChatGPT` as the default workspace for new Mac/Windows installs.
-- Keep using `Documents/Codex` when that workspace folder already exists.
-- Let advanced users choose a different workspace folder.
+- Set `Documents/ChatGPT` as the default project parent path for new Mac/Windows installs without creating a ChatGPT Desktop project.
+- Use `Documents/Codex` when it already exists, otherwise `Documents/ChatGPT`; these are parent folders, not automatic ChatGPT Desktop projects.
+- Remove the old empty `Documents/Codex/ChatGPT` project folder if a previous installer run created it and it has no files.
+- Let advanced users choose a different project parent folder.
 - Default to `gpt-5.5` with `medium` reasoning.
 - Offer only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
 - Omit `model_reasoning_effort` for alternate models unless their supported values are known.
+- Keep one active approved model in `config.toml` and, when Codex is available, write a filtered `model_catalog_json` generated from Codex's current model catalog so Codex does not show unsupported OpenAI models.
 - Back up an existing `config.toml` before writing the UNC config.
 - Test the UNC Responses API endpoint before marking setup complete.
 - Offer ChatGPT Desktop and Codex CLI install or launch actions only after configuration succeeds.
+- Open ChatGPT Desktop by default after setup without sending a workspace path, so a new install does not get an automatic project entry.
 - Keep setup receipts and support diagnostics for troubleshooting.
 - Record the installer version/build date in receipts and support diagnostics.
-- Reset installer-created settings without deleting the workspace folder or user files.
+- Reset or uninstall installer-created settings without deleting project parent folders or user files.
 
 ## Security
 
