@@ -96,7 +96,7 @@ final class ConfigManager: @unchecked Sendable {
             return ConfigBackupResult(backupURL: nil, message: "No existing Codex config was found.")
         }
 
-        let backupURL = configDirectory.appendingPathComponent("config.toml.backup.\(Self.timestamp())")
+        let backupURL = uniqueArchiveURL(prefix: "config.toml.backup")
         try fileManager.copyItem(at: configURL, to: backupURL)
         return ConfigBackupResult(backupURL: backupURL, message: "Backed up existing config to \(backupURL.path).")
     }
@@ -131,6 +131,9 @@ final class ConfigManager: @unchecked Sendable {
         }
 
         try contents.write(to: configURL, atomically: true, encoding: .utf8)
+        if storageMode == .plaintextConfig {
+            try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: configURL.path)
+        }
     }
 
     func restoreBackup(from backupURL: URL) throws -> ConfigBackupResult {
@@ -162,7 +165,7 @@ final class ConfigManager: @unchecked Sendable {
             return ConfigBackupResult(backupURL: nil, message: "No Codex config was present.")
         }
 
-        let removedURL = configDirectory.appendingPathComponent("config.toml.removed.\(Self.timestamp())")
+        let removedURL = uniqueArchiveURL(prefix: "config.toml.removed")
         try fileManager.moveItem(at: configURL, to: removedURL)
         return ConfigBackupResult(
             backupURL: removedURL,
@@ -245,13 +248,11 @@ final class ConfigManager: @unchecked Sendable {
         process.environment = ProcessInfo.processInfo.environment.merging(["CODEX_HOME": tempCodexHome.path]) { _, new in new }
 
         let output = Pipe()
-        let error = Pipe()
         process.standardOutput = output
-        process.standardError = error
+        process.standardError = FileHandle.nullDevice
         try process.run()
         let outputData = output.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        _ = error.fileHandleForReading.readDataToEndOfFile()
 
         guard process.terminationStatus == 0, !outputData.isEmpty else {
             return nil
@@ -287,12 +288,16 @@ final class ConfigManager: @unchecked Sendable {
 
         for approvedModel in CodexModel.approvedCodexModels {
             let sourceModel: [String: Any]?
+            let isSynthesized: Bool
             if let currentModel = currentModelsByID[approvedModel.id] {
                 sourceModel = currentModel
+                isSynthesized = false
             } else if approvedModel.id.hasPrefix("gpt-5.6-") {
                 sourceModel = synthesisTemplate
+                isSynthesized = true
             } else {
                 sourceModel = nil
+                isSynthesized = false
             }
 
             guard var model = sourceModel else {
@@ -301,23 +306,26 @@ final class ConfigManager: @unchecked Sendable {
 
             model["slug"] = approvedModel.id
             model["display_name"] = approvedModel.label
-            model["description"] = approvedModel.isRecommended ? "Recommended UNC model for ChatGPT/Codex work." : "Approved UNC ChatGPT/Codex model."
+            model["description"] = approvedModel.modelHelpText
             model["priority"] = filteredModels.count
             if let defaultReasoningEffort = approvedModel.defaultReasoningEffort {
                 model["default_reasoning_level"] = defaultReasoningEffort.rawValue
-                model["supported_reasoning_levels"] = approvedModel.catalogReasoningLevels
-            } else {
-                model.removeValue(forKey: "default_reasoning_level")
-                model.removeValue(forKey: "supported_reasoning_levels")
+                if isSynthesized || !(model["supported_reasoning_levels"] is [[String: Any]]) {
+                    model["supported_reasoning_levels"] = approvedModel.catalogReasoningLevels
+                }
             }
-            if currentModelsByID[approvedModel.id] == nil {
+            if isSynthesized {
                 model.removeValue(forKey: "availability_nux")
                 model.removeValue(forKey: "upgrade")
             }
             filteredModels.append(model)
         }
 
-        guard !filteredModels.isEmpty else {
+        let hasRequiredReasoningFields = filteredModels.allSatisfy { model in
+            model["default_reasoning_level"] is String &&
+                model["supported_reasoning_levels"] is [[String: Any]]
+        }
+        guard !filteredModels.isEmpty, hasRequiredReasoningFields else {
             throw ConfigManagerError.invalidModelCatalog
         }
 
@@ -347,6 +355,12 @@ final class ConfigManager: @unchecked Sendable {
         } else {
             try fileManager.moveItem(at: tempURL, to: configURL)
         }
+    }
+
+    private func uniqueArchiveURL(prefix: String) -> URL {
+        configDirectory.appendingPathComponent(
+            "\(prefix).\(Self.timestamp()).\(UUID().uuidString.lowercased())"
+        )
     }
 
     private func value(for key: String, in contents: String) -> String? {

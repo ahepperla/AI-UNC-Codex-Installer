@@ -116,8 +116,21 @@ final class LaunchAgentManager: @unchecked Sendable {
     }
 
     func reload() async -> LaunchAgentOperationResult {
-        _ = try? await runner.run(executable: "/bin/launchctl", arguments: ["bootout", guiDomain, plistURL.path])
-        return await loadImmediately()
+        do {
+            let unsetEnvironment = try await runner.run(
+                executable: "/bin/launchctl",
+                arguments: ["unsetenv", environmentKey]
+            )
+            guard unsetEnvironment.succeeded else {
+                return LaunchAgentOperationResult(
+                    succeeded: false,
+                    message: "Could not clear the existing GUI environment value before reloading:\n\(unsetEnvironment.combinedOutput)"
+                )
+            }
+            return await loadImmediately()
+        } catch {
+            return LaunchAgentOperationResult(succeeded: false, message: error.localizedDescription)
+        }
     }
 
     func removeInstallation() async throws {

@@ -13,6 +13,7 @@ struct APIKeyView: View {
             VStack(alignment: .leading, spacing: 12) {
                 SecureField("UNC Azure OpenAI API key", text: $state.apiKey)
                     .textFieldStyle(.roundedBorder)
+                    .controlSize(.large)
                     .frame(maxWidth: 620)
 
                 Text(state.apiKeyFieldHelpText)
@@ -41,6 +42,9 @@ struct APIKeyView: View {
 
                 Divider()
                     .padding(.vertical, 4)
+
+                Text("Model settings")
+                    .font(.headline)
 
                 ModelAndReasoningControls(
                     selectedModel: $state.selectedModel,

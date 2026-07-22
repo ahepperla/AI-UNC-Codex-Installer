@@ -6,42 +6,40 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $script:AppName = 'AI @ UNC ChatGPT Installer'
-$script:InstallerVersion = '2026.07.22'
+$script:InstallerVersion = '2026.07.22.3'
 $script:InstallerBuildDate = '2026-07-22'
 $script:EnvKey = 'UNC_AZURE_API_KEY'
 $script:DefaultModel = 'gpt-5.6-sol'
+# Reasoning controls the desktop picker. CatalogReasoning preserves every verified catalog level.
 $script:ModelOptions = @(
-    [pscustomobject]@{ Deployment = 'gpt-5.6-sol'; Label = 'gpt-5.6-sol'; Reasoning = @('low', 'medium', 'high', 'xhigh', 'max'); DefaultReasoning = 'medium' },
-    [pscustomobject]@{ Deployment = 'gpt-5.6-terra'; Label = 'gpt-5.6-terra'; Reasoning = @('low', 'medium', 'high', 'xhigh', 'max'); DefaultReasoning = 'medium' },
-    [pscustomobject]@{ Deployment = 'gpt-5.6-luna'; Label = 'gpt-5.6-luna'; Reasoning = @('low', 'medium', 'high', 'xhigh', 'max'); DefaultReasoning = 'medium' },
-    [pscustomobject]@{ Deployment = 'gpt-5.5'; Label = 'gpt-5.5'; Reasoning = @('low', 'medium', 'high', 'xhigh'); DefaultReasoning = 'medium' },
-    [pscustomobject]@{ Deployment = 'gpt-5.4'; Label = 'gpt-5.4'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-5.4-mini'; Label = 'gpt-5.4-mini'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-5.4-nano'; Label = 'gpt-5.4-nano'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-5.3-codex'; Label = 'gpt-5.3-codex'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-5.2'; Label = 'gpt-5.2'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-5.1'; Label = 'gpt-5.1'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-5'; Label = 'gpt-5'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-5-mini'; Label = 'gpt-5-mini'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-5-nano'; Label = 'gpt-5-nano'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-4.1'; Label = 'gpt-4.1'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-4.1-mini'; Label = 'gpt-4.1-mini'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-4.1-nano'; Label = 'gpt-4.1-nano'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-4o'; Label = 'gpt-4o'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'gpt-4o-mini'; Label = 'gpt-4o-mini'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'o1'; Label = 'o1'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'o1-preview'; Label = 'o1-preview'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'o1-mini'; Label = 'o1-mini'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'o3-mini'; Label = 'o3-mini'; Reasoning = @(); DefaultReasoning = $null },
-    [pscustomobject]@{ Deployment = 'chat'; Label = 'chat (gpt-4.1-mini)'; Reasoning = @(); DefaultReasoning = $null }
+    [pscustomobject]@{ Deployment = 'gpt-5.6-sol'; Label = 'gpt-5.6-sol'; Description = 'Recommended default and latest frontier model for complex coding and long-running work.'; Reasoning = @('low', 'medium', 'high', 'xhigh', 'ultra'); CatalogReasoning = @('low', 'medium', 'high', 'xhigh', 'max', 'ultra'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.6-terra'; Label = 'gpt-5.6-terra'; Description = 'Balanced model for everyday coding, debugging, and general work.'; Reasoning = @('low', 'medium', 'high', 'xhigh', 'ultra'); CatalogReasoning = @('low', 'medium', 'high', 'xhigh', 'max', 'ultra'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.6-luna'; Label = 'gpt-5.6-luna'; Description = 'Fast, lightweight model for shorter coding tasks and quick edits.'; Reasoning = @('low', 'medium', 'high', 'xhigh'); CatalogReasoning = @('low', 'medium', 'high', 'xhigh', 'max'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.5'; Label = 'gpt-5.5'; Description = 'Frontier model for complex coding, research, and real-world work.'; Reasoning = @('low', 'medium', 'high', 'xhigh'); CatalogReasoning = @('low', 'medium', 'high', 'xhigh'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.4'; Label = 'gpt-5.4'; Description = 'Strong model for everyday coding and debugging.'; Reasoning = @('low', 'medium', 'high', 'xhigh'); CatalogReasoning = @('low', 'medium', 'high', 'xhigh'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.4-mini'; Label = 'gpt-5.4-mini'; Description = 'Fast, lightweight model for straightforward coding tasks.'; Reasoning = @('low', 'medium', 'high', 'xhigh'); CatalogReasoning = @('low', 'medium', 'high', 'xhigh'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.4-nano'; Label = 'gpt-5.4-nano'; Description = 'Small approved model for simple tasks and compatibility.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-5.3-codex'; Label = 'gpt-5.3-codex'; Description = 'Coding-focused model for software development workflows.'; Reasoning = @('low', 'medium', 'high', 'xhigh'); CatalogReasoning = @('low', 'medium', 'high', 'xhigh'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.2'; Label = 'gpt-5.2'; Description = 'Model for professional work and long-running agent tasks.'; Reasoning = @('low', 'medium', 'high', 'xhigh'); CatalogReasoning = @('low', 'medium', 'high', 'xhigh'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.1'; Label = 'gpt-5.1'; Description = 'Earlier general-purpose GPT-5 model for existing workflows.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-5'; Label = 'gpt-5'; Description = 'Earlier GPT-5 model for general work and compatibility.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-5-mini'; Label = 'gpt-5-mini'; Description = 'Earlier lightweight GPT-5 model for simple, quick tasks.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-5-nano'; Label = 'gpt-5-nano'; Description = 'Small earlier GPT-5 model for basic, low-complexity tasks.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-4.1'; Label = 'gpt-4.1'; Description = 'Earlier general-purpose model for coding and instruction-following tasks.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-4.1-mini'; Label = 'gpt-4.1-mini'; Description = 'Earlier lightweight general-purpose model for shorter tasks.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-4.1-nano'; Label = 'gpt-4.1-nano'; Description = 'Small earlier model for basic, low-complexity tasks.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-4o'; Label = 'gpt-4o'; Description = 'Earlier general-purpose model for text, coding, and multimodal workflows.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'gpt-4o-mini'; Label = 'gpt-4o-mini'; Description = 'Earlier lightweight model for shorter text and multimodal tasks.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'o1'; Label = 'o1'; Description = 'Earlier deep-reasoning model for complex problems; uses model-default effort.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'o1-preview'; Label = 'o1-preview'; Description = 'Preview-era deep-reasoning model for compatibility with existing workflows.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'o1-mini'; Label = 'o1-mini'; Description = 'Earlier compact reasoning model for focused problems; uses model-default effort.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'o3-mini'; Label = 'o3-mini'; Description = 'Earlier compact reasoning model for coding, math, and logic tasks.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null },
+    [pscustomobject]@{ Deployment = 'chat'; Label = 'chat (gpt-4.1-mini)'; Description = 'Compatibility alias for the gpt-4.1-mini chat deployment.'; Reasoning = @(); CatalogReasoning = @(); DefaultReasoning = $null }
 )
-$script:Model = $script:DefaultModel
 $script:ModelDisplayMap = @{}
 foreach ($modelOption in $script:ModelOptions) {
     $script:ModelDisplayMap[$modelOption.Label] = $modelOption
 }
-$script:ReasoningEffortOptions = @('low', 'medium', 'high', 'xhigh', 'max')
-$script:DefaultReasoningEffort = 'medium'
 $script:EndpointBaseUrl = 'https://azureaiapi.cloud.unc.edu/openai/v1'
 $script:ResponsesUrl = 'https://azureaiapi.cloud.unc.edu/openai/v1/responses'
 $script:CodexDownloadUrl = 'https://openai.com/codex/'
@@ -80,6 +78,8 @@ $script:WorkspacePathLabel = $null
 $script:PlaintextConfigCheckBox = $null
 $script:ModelComboBox = $null
 $script:ReasoningEffortComboBox = $null
+$script:ModelHelpLabel = $null
+$script:ReasoningHelpLabel = $null
 $script:LaunchAfterSetupCheckBox = $null
 $script:CodexStatusLabel = $null
 $script:OpenDesktopButton = $null
@@ -144,6 +144,23 @@ function Copy-FileAtomic {
             Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
         }
     }
+}
+
+function Get-UniqueTimestampedPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$Directory,
+        [Parameter(Mandatory = $true)][string]$Prefix
+    )
+
+    $baseName = '{0}.{1}' -f $Prefix, (Get-Date -Format 'yyyyMMdd_HHmmss')
+    $candidate = Join-Path $Directory $baseName
+    $suffix = 1
+    while (Test-Path -LiteralPath $candidate) {
+        $candidate = Join-Path $Directory ('{0}.{1}' -f $baseName, $suffix)
+        $suffix += 1
+    }
+
+    return $candidate
 }
 
 function Get-DocumentsPath {
@@ -399,6 +416,37 @@ function Update-ReasoningOptionsForSelectedModel {
         [void]$script:ReasoningEffortComboBox.Items.Add('model default')
         $script:ReasoningEffortComboBox.SelectedItem = 'model default'
         $script:ReasoningEffortComboBox.Enabled = $false
+    }
+
+    Update-SelectionHelpText
+}
+
+function Get-ReasoningHelpText {
+    param([Parameter(Mandatory = $true)][string]$Effort)
+
+    switch ($Effort) {
+        'low' { return 'Faster responses for straightforward tasks, with less time spent reasoning.' }
+        'medium' { return 'Recommended balance of speed and careful reasoning for most work.' }
+        'high' { return 'More careful reasoning for complex code changes and troubleshooting.' }
+        'xhigh' { return 'Deep reasoning for difficult tasks; responses may take longer.' }
+        'max' { return 'Maximum supported reasoning for the hardest tasks; expect the longest waits.' }
+        'ultra' { return 'Maximum reasoning with automatic task delegation for large, multi-step work.' }
+        default { return 'Uses the model-default reasoning setting.' }
+    }
+}
+
+function Update-SelectionHelpText {
+    if ($script:ModelHelpLabel -eq $null -or $script:ReasoningHelpLabel -eq $null) {
+        return
+    }
+
+    $modelOption = Get-SelectedModelOption
+    $reasoningEffort = Get-SelectedReasoningEffort
+    $script:ModelHelpLabel.Text = $modelOption.Description
+    $script:ReasoningHelpLabel.Text = if ($reasoningEffort) {
+        Get-ReasoningHelpText -Effort $reasoningEffort
+    } else {
+        'Uses the model default because verified reasoning choices are not available for this model.'
     }
 }
 
@@ -752,6 +800,33 @@ function Wait-CodexDetection {
     return $detection
 }
 
+function Wait-ChatGPTDesktopRemoval {
+    param([int]$TimeoutSeconds = 20)
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastLog = [datetime]::MinValue
+
+    do {
+        $detection = Get-CodexDetection
+        if (-not $detection.DesktopAppId) {
+            Update-CodexActionButtons -Detection $detection
+            return $detection
+        }
+
+        if (((Get-Date) - $lastLog).TotalSeconds -ge 10) {
+            Write-Log 'Still waiting for ChatGPT Desktop to disappear from Windows app registration...'
+            $lastLog = Get-Date
+        }
+
+        [System.Windows.Forms.Application]::DoEvents()
+        Start-Sleep -Seconds 2
+    } while ((Get-Date) -lt $deadline)
+
+    $detection = Get-CodexDetection
+    Update-CodexActionButtons -Detection $detection
+    return $detection
+}
+
 function Install-Codex {
     param([bool]$Force = $false)
 
@@ -815,13 +890,26 @@ function Install-Codex {
 
     try {
         Write-Log 'Attempting standalone Codex CLI installer.'
-        $previousNonInteractive = $env:CODEX_NON_INTERACTIVE
-        $env:CODEX_NON_INTERACTIVE = '1'
+        $installerScript = Join-Path ([System.IO.Path]::GetTempPath()) ('codex-install-{0}.ps1' -f [guid]::NewGuid().ToString('N'))
         try {
-            $installer = Invoke-WebRequest -Uri $script:StandaloneInstallerUrl -UseBasicParsing -TimeoutSec 60
-            Invoke-Expression $installer.Content
+            Invoke-WebRequest `
+                -Uri $script:StandaloneInstallerUrl `
+                -UseBasicParsing `
+                -TimeoutSec 60 `
+                -OutFile $installerScript
+            $installerResult = Invoke-ExternalCommand `
+                -FilePath $installerScript `
+                -Environment @{
+                    CODEX_NON_INTERACTIVE = '1'
+                    CI = '1'
+                }
+            if (-not $installerResult.Succeeded) {
+                Write-Log 'The standalone installer returned a nonzero exit code. Checking whether Codex was installed anyway.'
+            }
         } finally {
-            $env:CODEX_NON_INTERACTIVE = $previousNonInteractive
+            if (Test-Path -LiteralPath $installerScript) {
+                Remove-Item -LiteralPath $installerScript -Force -ErrorAction SilentlyContinue
+            }
         }
 
         $localBin = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\OpenAI\Codex\bin'
@@ -869,8 +957,7 @@ function Backup-CodexConfig {
         return $null
     }
 
-    $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-    $backupPath = Join-Path $script:CodexHome "config.toml.backup.$stamp"
+    $backupPath = Get-UniqueTimestampedPath -Directory $script:CodexHome -Prefix 'config.toml.backup'
     Copy-Item -LiteralPath $script:ConfigPath -Destination $backupPath -Force
     Write-Log "Backed up existing Codex config to $backupPath."
     return $backupPath
@@ -978,11 +1065,12 @@ function Get-ReasoningCatalogDescription {
     param([Parameter(Mandatory = $true)][string]$Effort)
 
     switch ($Effort) {
-        'low' { return 'Fast responses with lighter reasoning' }
-        'medium' { return 'Balances speed and reasoning depth for everyday tasks' }
-        'high' { return 'Greater reasoning depth for complex problems' }
-        'xhigh' { return 'Extra high reasoning depth for complex problems' }
-        'max' { return 'Maximum reasoning depth for the hardest problems' }
+        'low' { return 'Faster responses with lighter reasoning for straightforward tasks' }
+        'medium' { return 'Recommended balance of speed and reasoning depth for most work' }
+        'high' { return 'More careful reasoning for complex code changes and troubleshooting' }
+        'xhigh' { return 'Deep reasoning for difficult tasks, with longer response times' }
+        'max' { return 'Maximum supported reasoning for the hardest tasks' }
+        'ultra' { return 'Maximum reasoning with automatic task delegation for large, multi-step work' }
         default { return 'Model-supported reasoning depth' }
     }
 }
@@ -993,14 +1081,12 @@ function Set-CatalogReasoningProperties {
         [Parameter(Mandatory = $true)][object]$ModelOption
     )
 
-    if ($ModelOption.Reasoning.Count -eq 0) {
-        Remove-JsonProperty -InputObject $Model -Name 'default_reasoning_level'
-        Remove-JsonProperty -InputObject $Model -Name 'supported_reasoning_levels'
+    if ($ModelOption.CatalogReasoning.Count -eq 0) {
         return
     }
 
     $levels = @()
-    foreach ($effort in $ModelOption.Reasoning) {
+    foreach ($effort in $ModelOption.CatalogReasoning) {
         $levels += [pscustomobject]@{
             effort = $effort
             description = Get-ReasoningCatalogDescription -Effort $effort
@@ -1077,13 +1163,17 @@ function Write-ModelCatalog {
                 continue
             }
 
-            $description = if ($modelOption.Deployment -eq $script:DefaultModel) { 'Recommended UNC model for ChatGPT/Codex work.' } else { 'Approved UNC ChatGPT/Codex model.' }
             $displayName = $modelOption.Label
             Set-JsonProperty -InputObject $model -Name 'slug' -Value $modelOption.Deployment
             Set-JsonProperty -InputObject $model -Name 'display_name' -Value $displayName
-            Set-JsonProperty -InputObject $model -Name 'description' -Value $description
+            Set-JsonProperty -InputObject $model -Name 'description' -Value $modelOption.Description
             Set-JsonProperty -InputObject $model -Name 'priority' -Value $filteredModels.Count
-            Set-CatalogReasoningProperties -Model $model -ModelOption $modelOption
+            $supportedReasoningProperty = $model.PSObject.Properties['supported_reasoning_levels']
+            if ($isSynthesized -or $supportedReasoningProperty -eq $null -or $supportedReasoningProperty.Value -eq $null) {
+                Set-CatalogReasoningProperties -Model $model -ModelOption $modelOption
+            } elseif ($modelOption.DefaultReasoning) {
+                Set-JsonProperty -InputObject $model -Name 'default_reasoning_level' -Value $modelOption.DefaultReasoning
+            }
             if ($isSynthesized) {
                 Remove-JsonProperty -InputObject $model -Name 'availability_nux'
                 Remove-JsonProperty -InputObject $model -Name 'upgrade'
@@ -1094,6 +1184,14 @@ function Write-ModelCatalog {
         if ($filteredModels.Count -eq 0) {
             Write-Log 'No approved UNC models were present in the current Codex catalog, so the picker restriction was skipped.'
             return $false
+        }
+
+        foreach ($model in $filteredModels) {
+            if ($model.PSObject.Properties['default_reasoning_level'] -eq $null -or
+                $model.PSObject.Properties['supported_reasoning_levels'] -eq $null) {
+                Write-Log 'Filtered model catalog was missing required reasoning fields, so the picker restriction was skipped.'
+                return $false
+            }
         }
 
         Set-JsonProperty -InputObject $catalog -Name 'fetched_at' -Value ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))
@@ -1123,7 +1221,6 @@ function Write-CodexConfig {
     Backup-CodexConfig | Out-Null
     $modelCatalogWritten = Write-ModelCatalog
     $selectedModel = Get-SelectedModelDeployment
-    $script:Model = $selectedModel
     $quotedModel = ConvertTo-TomlString -Value $selectedModel
     $reasoningEffort = Get-SelectedReasoningEffort
     $configLines = @(
@@ -1348,23 +1445,6 @@ function Open-CodexCli {
     Start-CodexCli -Detection $detection
 }
 
-function Launch-Codex {
-    $detection = Get-CodexDetection
-    Update-CodexActionButtons -Detection $detection
-
-    if ($detection.DesktopAppId) {
-        Start-CodexDesktop -Detection $detection
-        return
-    }
-
-    if ($detection.CliPath) {
-        Start-CodexCli -Detection $detection
-        return
-    }
-
-    Write-Log 'Open Codex skipped because ChatGPT Desktop and Codex CLI were not detected.'
-}
-
 function Save-SupportReport {
     Ensure-Directory -Path $script:SupportDirectory
     $detection = Get-CodexDetection
@@ -1423,8 +1503,7 @@ function Reset-Changes {
 
     if ($latestBackup -ne $null) {
         if (Test-Path -LiteralPath $script:ConfigPath) {
-            $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-            $resetBackup = Join-Path $script:CodexHome "config.toml.reset-backup.$stamp"
+            $resetBackup = Get-UniqueTimestampedPath -Directory $script:CodexHome -Prefix 'config.toml.reset-backup'
             Copy-Item -LiteralPath $script:ConfigPath -Destination $resetBackup -Force
             Write-Log "Backed up current config to $resetBackup."
         }
@@ -1432,8 +1511,7 @@ function Reset-Changes {
         Copy-FileAtomic -SourcePath $latestBackup.FullName -DestinationPath $script:ConfigPath
         Write-Log "Restored Codex config from $($latestBackup.FullName)."
     } elseif (Test-Path -LiteralPath $script:ConfigPath) {
-        $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-        $removedPath = Join-Path $script:CodexHome "config.toml.removed.$stamp"
+        $removedPath = Get-UniqueTimestampedPath -Directory $script:CodexHome -Prefix 'config.toml.removed'
         Move-Item -LiteralPath $script:ConfigPath -Destination $removedPath -Force
         Write-Log "No config backup was available. Moved current config to $removedPath."
     } else {
@@ -1497,7 +1575,7 @@ function Uninstall-ChatGPTDesktop {
             )
         }
 
-        $detection = Wait-CodexDetection -TimeoutSeconds 20
+        $detection = Wait-ChatGPTDesktopRemoval -TimeoutSeconds 20
         if (-not $detection.DesktopAppId) {
             Write-Log 'ChatGPT Desktop is no longer detected.'
             if ($Prompt) { Show-Info -Message 'ChatGPT Desktop is no longer detected.' }
@@ -1561,8 +1639,7 @@ function Restore-OrRemove-CodexConfigForUninstall {
     }
 
     if (Test-Path -LiteralPath $script:ConfigPath) {
-        $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
-        $removedPath = Join-Path $script:CodexHome "config.toml.removed.$stamp"
+        $removedPath = Get-UniqueTimestampedPath -Directory $script:CodexHome -Prefix 'config.toml.removed'
         Move-Item -LiteralPath $script:ConfigPath -Destination $removedPath -Force
         return "Moved current config to $removedPath."
     }
@@ -1655,7 +1732,11 @@ function Run-FullSetup {
 
     Write-Log 'Setup complete.'
     if ($script:LaunchAfterSetupCheckBox.Checked) {
-        Launch-Codex
+        if ($detection.DesktopAppId) {
+            Start-CodexDesktop -Detection $detection
+        } else {
+            Write-Log 'Open ChatGPT Desktop after setup was skipped because the desktop app is not installed.'
+        }
     }
     Show-Info -Message (Get-SetupCompleteMessage -Detection $detection)
 }
@@ -1728,15 +1809,15 @@ function Set-AdvancedVisible {
     $script:AdvancedGroupBox.Visible = $Visible
 
     if ($Visible) {
-        $script:AdvancedToggleButton.Text = 'Hide Advanced Options'
-        $script:LogLabel.Location = New-Object System.Drawing.Point(24, 617)
-        $script:LogBox.Location = New-Object System.Drawing.Point(24, 642)
-        $script:LogBox.Size = New-Object System.Drawing.Size(820, 66)
+        $script:AdvancedToggleButton.Text = 'Hide Advanced Tools'
+        $script:LogLabel.Location = New-Object System.Drawing.Point(24, 706)
+        $script:LogBox.Location = New-Object System.Drawing.Point(24, 731)
+        $script:LogBox.Size = New-Object System.Drawing.Size(820, 68)
     } else {
-        $script:AdvancedToggleButton.Text = 'Show Advanced Options'
-        $script:LogLabel.Location = New-Object System.Drawing.Point(24, 423)
-        $script:LogBox.Location = New-Object System.Drawing.Point(24, 448)
-        $script:LogBox.Size = New-Object System.Drawing.Size(820, 260)
+        $script:AdvancedToggleButton.Text = 'Show Advanced Tools'
+        $script:LogLabel.Location = New-Object System.Drawing.Point(24, 502)
+        $script:LogBox.Location = New-Object System.Drawing.Point(24, 527)
+        $script:LogBox.Size = New-Object System.Drawing.Size(820, 272)
     }
 }
 
@@ -1745,11 +1826,12 @@ function Build-Gui {
 
     $script:Form = New-Object System.Windows.Forms.Form
     $script:Form.Text = 'AI @ UNC ChatGPT Installer for Windows'
-    $script:Form.Size = New-Object System.Drawing.Size(880, 800)
-    $script:Form.MinimumSize = New-Object System.Drawing.Size(880, 800)
+    $script:Form.ClientSize = New-Object System.Drawing.Size(880, 850)
+    $script:Form.MinimumSize = New-Object System.Drawing.Size(900, 760)
     $script:Form.StartPosition = 'CenterScreen'
     $script:Form.Font = New-Object System.Drawing.Font('Segoe UI', 9)
     $script:Form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
+    $script:Form.AutoScroll = $true
 
     $title = New-Object System.Windows.Forms.Label
     $title.Text = 'AI @ UNC ChatGPT Installer'
@@ -1761,11 +1843,13 @@ function Build-Gui {
     $subtitle = New-Object System.Windows.Forms.Label
     $subtitle.Text = ('For most users: paste the API key, then click Run Recommended Setup. Installer {0} ({1}).' -f $script:InstallerVersion, $script:InstallerBuildDate)
     $subtitle.Location = New-Object System.Drawing.Point(24, 48)
-    $subtitle.Size = New-Object System.Drawing.Size(820, 24)
+    $subtitle.Size = New-Object System.Drawing.Size(740, 36)
     $subtitle.ForeColor = [System.Drawing.Color]::DimGray
     $script:Form.Controls.Add($subtitle)
 
-    $exit = New-Button -Text 'Exit' -X 784 -Y 18 -Width 74 -Height 28 -RegisterAction $false
+    $exit = New-Button -Text 'Close' -X 784 -Y 18 -Width 74 -Height 28 -RegisterAction $false
+    $exit.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+    $exit.TabIndex = 31
     $exit.Add_Click({ $script:Form.Close() })
 
     $keyLabel = New-Object System.Windows.Forms.Label
@@ -1778,12 +1862,14 @@ function Build-Gui {
     $script:KeyTextBox.Location = New-Object System.Drawing.Point(24, 113)
     $script:KeyTextBox.Size = New-Object System.Drawing.Size(640, 26)
     $script:KeyTextBox.PasswordChar = '*'
+    $script:KeyTextBox.TabIndex = 0
     $script:Form.Controls.Add($script:KeyTextBox)
 
     $showKey = New-Object System.Windows.Forms.CheckBox
-    $showKey.Text = 'Show'
+    $showKey.Text = 'Show key'
     $showKey.Location = New-Object System.Drawing.Point(676, 115)
-    $showKey.Size = New-Object System.Drawing.Size(75, 24)
+    $showKey.Size = New-Object System.Drawing.Size(100, 24)
+    $showKey.TabIndex = 1
     $showKey.Add_CheckedChanged({
         if ($showKey.Checked) {
             $script:KeyTextBox.PasswordChar = [char]0
@@ -1794,28 +1880,30 @@ function Build-Gui {
     $script:Form.Controls.Add($showKey)
 
     $recommendationBox = New-Object System.Windows.Forms.GroupBox
-    $recommendationBox.Text = 'Recommended setup'
+    $recommendationBox.Text = 'Recommended Setup'
     $recommendationBox.Location = New-Object System.Drawing.Point(24, 150)
-    $recommendationBox.Size = New-Object System.Drawing.Size(820, 220)
+    $recommendationBox.Size = New-Object System.Drawing.Size(820, 296)
     $script:Form.Controls.Add($recommendationBox)
 
     $recommendationText = New-Object System.Windows.Forms.Label
     $recommendationText.Text = 'Saves the UNC API key, writes the recommended config, tests the endpoint, then offers ChatGPT/Codex install or open actions.'
     $recommendationText.Location = New-Object System.Drawing.Point(16, 25)
-    $recommendationText.Size = New-Object System.Drawing.Size(550, 44)
+    $recommendationText.Size = New-Object System.Drawing.Size(560, 38)
     $recommendationText.ForeColor = [System.Drawing.Color]::DimGray
     $recommendationBox.Controls.Add($recommendationText)
 
     $modelLabel = New-Object System.Windows.Forms.Label
-    $modelLabel.Text = 'Model:'
-    $modelLabel.Location = New-Object System.Drawing.Point(16, 76)
-    $modelLabel.Size = New-Object System.Drawing.Size(74, 22)
+    $modelLabel.Text = 'Model'
+    $modelLabel.Location = New-Object System.Drawing.Point(16, 72)
+    $modelLabel.Size = New-Object System.Drawing.Size(270, 22)
+    $modelLabel.Font = New-Object System.Drawing.Font('Segoe UI', 9, [System.Drawing.FontStyle]::Bold)
     $recommendationBox.Controls.Add($modelLabel)
 
     $script:ModelComboBox = New-Object System.Windows.Forms.ComboBox
     $script:ModelComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-    $script:ModelComboBox.Location = New-Object System.Drawing.Point(92, 73)
-    $script:ModelComboBox.Size = New-Object System.Drawing.Size(250, 24)
+    $script:ModelComboBox.Location = New-Object System.Drawing.Point(16, 95)
+    $script:ModelComboBox.Size = New-Object System.Drawing.Size(270, 26)
+    $script:ModelComboBox.TabIndex = 2
     foreach ($modelOption in $script:ModelOptions) {
         [void]$script:ModelComboBox.Items.Add($modelOption.Label)
     }
@@ -1826,27 +1914,44 @@ function Build-Gui {
     $recommendationBox.Controls.Add($script:ModelComboBox)
 
     $reasoningLabel = New-Object System.Windows.Forms.Label
-    $reasoningLabel.Text = 'Reasoning:'
-    $reasoningLabel.Location = New-Object System.Drawing.Point(360, 76)
-    $reasoningLabel.Size = New-Object System.Drawing.Size(74, 22)
+    $reasoningLabel.Text = 'Reasoning'
+    $reasoningLabel.Location = New-Object System.Drawing.Point(310, 72)
+    $reasoningLabel.Size = New-Object System.Drawing.Size(276, 22)
+    $reasoningLabel.Font = New-Object System.Drawing.Font('Segoe UI', 9, [System.Drawing.FontStyle]::Bold)
     $recommendationBox.Controls.Add($reasoningLabel)
 
     $script:ReasoningEffortComboBox = New-Object System.Windows.Forms.ComboBox
     $script:ReasoningEffortComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-    $script:ReasoningEffortComboBox.Location = New-Object System.Drawing.Point(438, 73)
-    $script:ReasoningEffortComboBox.Size = New-Object System.Drawing.Size(150, 24)
+    $script:ReasoningEffortComboBox.Location = New-Object System.Drawing.Point(310, 95)
+    $script:ReasoningEffortComboBox.Size = New-Object System.Drawing.Size(276, 26)
+    $script:ReasoningEffortComboBox.TabIndex = 3
+    $script:ReasoningEffortComboBox.Add_SelectedIndexChanged({
+        Update-SelectionHelpText
+    })
     $recommendationBox.Controls.Add($script:ReasoningEffortComboBox)
+
+    $script:ModelHelpLabel = New-Object System.Windows.Forms.Label
+    $script:ModelHelpLabel.Location = New-Object System.Drawing.Point(16, 128)
+    $script:ModelHelpLabel.Size = New-Object System.Drawing.Size(270, 48)
+    $script:ModelHelpLabel.ForeColor = [System.Drawing.Color]::DimGray
+    $recommendationBox.Controls.Add($script:ModelHelpLabel)
+
+    $script:ReasoningHelpLabel = New-Object System.Windows.Forms.Label
+    $script:ReasoningHelpLabel.Location = New-Object System.Drawing.Point(310, 128)
+    $script:ReasoningHelpLabel.Size = New-Object System.Drawing.Size(276, 48)
+    $script:ReasoningHelpLabel.ForeColor = [System.Drawing.Color]::DimGray
+    $recommendationBox.Controls.Add($script:ReasoningHelpLabel)
     Update-ReasoningOptionsForSelectedModel
 
     $workspaceCaption = New-Object System.Windows.Forms.Label
-    $workspaceCaption.Text = 'Parent:'
-    $workspaceCaption.Location = New-Object System.Drawing.Point(16, 110)
-    $workspaceCaption.Size = New-Object System.Drawing.Size(78, 22)
+    $workspaceCaption.Text = 'Project parent:'
+    $workspaceCaption.Location = New-Object System.Drawing.Point(16, 188)
+    $workspaceCaption.Size = New-Object System.Drawing.Size(100, 22)
     $recommendationBox.Controls.Add($workspaceCaption)
 
     $script:RecommendationWorkspacePathLabel = New-Object System.Windows.Forms.Label
-    $script:RecommendationWorkspacePathLabel.Location = New-Object System.Drawing.Point(92, 110)
-    $script:RecommendationWorkspacePathLabel.Size = New-Object System.Drawing.Size(496, 22)
+    $script:RecommendationWorkspacePathLabel.Location = New-Object System.Drawing.Point(120, 188)
+    $script:RecommendationWorkspacePathLabel.Size = New-Object System.Drawing.Size(466, 22)
     $script:RecommendationWorkspacePathLabel.ForeColor = [System.Drawing.Color]::DimGray
     $script:RecommendationWorkspacePathLabel.AutoEllipsis = $true
     $recommendationBox.Controls.Add($script:RecommendationWorkspacePathLabel)
@@ -1854,14 +1959,15 @@ function Build-Gui {
 
     $script:LaunchAfterSetupCheckBox = New-Object System.Windows.Forms.CheckBox
     $script:LaunchAfterSetupCheckBox.Text = 'Open ChatGPT Desktop after setup'
-    $script:LaunchAfterSetupCheckBox.Location = New-Object System.Drawing.Point(18, 140)
+    $script:LaunchAfterSetupCheckBox.Location = New-Object System.Drawing.Point(18, 216)
     $script:LaunchAfterSetupCheckBox.Size = New-Object System.Drawing.Size(310, 24)
     $script:LaunchAfterSetupCheckBox.Checked = $true
+    $script:LaunchAfterSetupCheckBox.TabIndex = 4
     $recommendationBox.Controls.Add($script:LaunchAfterSetupCheckBox)
 
     $script:CodexStatusLabel = New-Object System.Windows.Forms.Label
     $script:CodexStatusLabel.Text = 'Codex status: checking...'
-    $script:CodexStatusLabel.Location = New-Object System.Drawing.Point(18, 178)
+    $script:CodexStatusLabel.Location = New-Object System.Drawing.Point(18, 258)
     $script:CodexStatusLabel.Size = New-Object System.Drawing.Size(570, 22)
     $script:CodexStatusLabel.ForeColor = [System.Drawing.Color]::DimGray
     $recommendationBox.Controls.Add($script:CodexStatusLabel)
@@ -1872,23 +1978,27 @@ function Build-Gui {
     $fullSetup.ForeColor = [System.Drawing.Color]::White
     $fullSetup.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $fullSetup.UseVisualStyleBackColor = $false
+    $fullSetup.TabIndex = 5
     $fullSetup.Add_Click({ Invoke-GuiAction { Run-FullSetup } })
 
-    $script:OpenDesktopButton = New-Button -Text 'Open ChatGPT Desktop' -X 600 -Y 101 -Width 200 -Height 28 -Parent $recommendationBox
+    $script:OpenDesktopButton = New-Button -Text 'Open ChatGPT Desktop' -X 600 -Y 96 -Width 200 -Height 30 -Parent $recommendationBox
+    $script:OpenDesktopButton.TabIndex = 6
     $script:OpenDesktopButton.Add_Click({ Invoke-GuiAction { Open-CodexDesktop } })
 
-    $script:OpenCliButton = New-Button -Text 'Open Codex CLI' -X 600 -Y 139 -Width 200 -Height 28 -Parent $recommendationBox
+    $script:OpenCliButton = New-Button -Text 'Open Codex CLI' -X 600 -Y 136 -Width 200 -Height 30 -Parent $recommendationBox
+    $script:OpenCliButton.TabIndex = 7
     $script:OpenCliButton.Add_Click({ Invoke-GuiAction { Open-CodexCli } })
 
-    $script:AdvancedToggleButton = New-Button -Text 'Show Advanced Options' -X 24 -Y 386 -Width 190 -Height 30 -RegisterAction $false
+    $script:AdvancedToggleButton = New-Button -Text 'Show Advanced Tools' -X 24 -Y 462 -Width 190 -Height 30 -RegisterAction $false
+    $script:AdvancedToggleButton.TabIndex = 8
     $script:AdvancedToggleButton.Add_Click({
         Set-AdvancedVisible -Visible (-not $script:AdvancedGroupBox.Visible)
     })
 
     $script:AdvancedGroupBox = New-Object System.Windows.Forms.GroupBox
-    $script:AdvancedGroupBox.Text = 'Advanced and troubleshooting'
-    $script:AdvancedGroupBox.Location = New-Object System.Drawing.Point(24, 424)
-    $script:AdvancedGroupBox.Size = New-Object System.Drawing.Size(820, 182)
+    $script:AdvancedGroupBox.Text = 'Advanced Tools and Recovery'
+    $script:AdvancedGroupBox.Location = New-Object System.Drawing.Point(24, 500)
+    $script:AdvancedGroupBox.Size = New-Object System.Drawing.Size(820, 190)
     $script:AdvancedGroupBox.Visible = $false
     $script:Form.Controls.Add($script:AdvancedGroupBox)
 
@@ -1896,87 +2006,104 @@ function Build-Gui {
     $script:PlaintextConfigCheckBox.Text = 'Write key directly in config.toml instead of using UNC_AZURE_API_KEY'
     $script:PlaintextConfigCheckBox.Location = New-Object System.Drawing.Point(16, 22)
     $script:PlaintextConfigCheckBox.Size = New-Object System.Drawing.Size(510, 24)
+    $script:PlaintextConfigCheckBox.TabIndex = 9
     $script:AdvancedGroupBox.Controls.Add($script:PlaintextConfigCheckBox)
 
     $advancedWorkspaceLabel = New-Object System.Windows.Forms.Label
-    $advancedWorkspaceLabel.Text = 'Parent:'
+    $advancedWorkspaceLabel.Text = 'Project parent:'
     $advancedWorkspaceLabel.Location = New-Object System.Drawing.Point(16, 52)
-    $advancedWorkspaceLabel.Size = New-Object System.Drawing.Size(78, 22)
+    $advancedWorkspaceLabel.Size = New-Object System.Drawing.Size(100, 22)
     $script:AdvancedGroupBox.Controls.Add($advancedWorkspaceLabel)
 
     $advancedWorkspacePath = New-Object System.Windows.Forms.Label
     $advancedWorkspacePath.Text = $script:WorkspacePath
-    $advancedWorkspacePath.Location = New-Object System.Drawing.Point(92, 52)
-    $advancedWorkspacePath.Size = New-Object System.Drawing.Size(470, 22)
+    $advancedWorkspacePath.Location = New-Object System.Drawing.Point(120, 52)
+    $advancedWorkspacePath.Size = New-Object System.Drawing.Size(434, 22)
     $advancedWorkspacePath.ForeColor = [System.Drawing.Color]::DimGray
     $advancedWorkspacePath.AutoEllipsis = $true
     $script:AdvancedGroupBox.Controls.Add($advancedWorkspacePath)
     $script:WorkspacePathLabel = $advancedWorkspacePath
     Update-WorkspaceDisplay
 
-    $chooseWorkspace = New-Button -Text 'Choose' -X 572 -Y 48 -Width 70 -Height 26 -Parent $script:AdvancedGroupBox
+    $chooseWorkspace = New-Button -Text 'Choose' -X 562 -Y 48 -Width 74 -Height 26 -Parent $script:AdvancedGroupBox
+    $chooseWorkspace.TabIndex = 10
     $chooseWorkspace.Add_Click({ Invoke-GuiAction { Choose-CodexWorkspace } })
 
-    $defaultWorkspace = New-Button -Text 'Default' -X 650 -Y 48 -Width 70 -Height 26 -Parent $script:AdvancedGroupBox
+    $defaultWorkspace = New-Button -Text 'Default' -X 644 -Y 48 -Width 74 -Height 26 -Parent $script:AdvancedGroupBox
+    $defaultWorkspace.TabIndex = 11
     $defaultWorkspace.Add_Click({ Invoke-GuiAction { Reset-CodexWorkspacePath } })
 
-    $openWorkspace = New-Button -Text 'Open' -X 728 -Y 48 -Width 70 -Height 26 -Parent $script:AdvancedGroupBox
+    $openWorkspace = New-Button -Text 'Open' -X 726 -Y 48 -Width 74 -Height 26 -Parent $script:AdvancedGroupBox
+    $openWorkspace.TabIndex = 12
     $openWorkspace.Add_Click({ Invoke-GuiAction { Open-CodexWorkspace } })
 
-    $detect = New-Button -Text 'Detect' -X 16 -Y 88 -Width 104 -Height 28 -Parent $script:AdvancedGroupBox
+    $detect = New-Button -Text 'Detect Codex' -X 16 -Y 88 -Width 118 -Height 28 -Parent $script:AdvancedGroupBox
+    $detect.TabIndex = 13
     $detect.Add_Click({ Invoke-GuiAction { Show-CodexDetection | Out-Null } })
 
-    $script:InstallButton = New-Button -Text 'Install Codex' -X 128 -Y 88 -Width 136 -Height 28 -Parent $script:AdvancedGroupBox
+    $script:InstallButton = New-Button -Text 'Install Codex' -X 142 -Y 88 -Width 128 -Height 28 -Parent $script:AdvancedGroupBox
+    $script:InstallButton.TabIndex = 14
     $script:InstallButton.Add_Click({ Invoke-GuiAction { Install-CodexWithWarning -Force $true | Out-Null; Show-CodexDetection | Out-Null } })
 
-    $configure = New-Button -Text 'Config Only' -X 272 -Y 88 -Width 104 -Height 28 -Parent $script:AdvancedGroupBox
+    $configure = New-Button -Text 'Write Config' -X 278 -Y 88 -Width 112 -Height 28 -Parent $script:AdvancedGroupBox
+    $configure.TabIndex = 15
     $configure.Add_Click({ Invoke-GuiAction { Configure-Only } })
 
-    $test = New-Button -Text 'Test' -X 384 -Y 88 -Width 92 -Height 28 -Parent $script:AdvancedGroupBox
+    $test = New-Button -Text 'Test Connection' -X 398 -Y 88 -Width 126 -Height 28 -Parent $script:AdvancedGroupBox
+    $test.TabIndex = 16
     $test.Add_Click({ Invoke-GuiAction { Test-ConnectionFromGui } })
 
-    $download = New-Button -Text 'Download' -X 484 -Y 88 -Width 104 -Height 28 -Parent $script:AdvancedGroupBox
+    $download = New-Button -Text 'Open Downloads' -X 532 -Y 88 -Width 128 -Height 28 -Parent $script:AdvancedGroupBox
+    $download.TabIndex = 17
     $download.Add_Click({ Invoke-GuiAction { Open-DownloadPage } })
 
-    $support = New-Button -Text 'Support Report' -X 596 -Y 88 -Width 120 -Height 28 -Parent $script:AdvancedGroupBox
+    $support = New-Button -Text 'Support Report' -X 668 -Y 88 -Width 132 -Height 28 -Parent $script:AdvancedGroupBox
+    $support.TabIndex = 18
     $support.Add_Click({ Invoke-GuiAction { Save-SupportReport } })
 
-    $reset = New-Button -Text 'Reset' -X 724 -Y 88 -Width 74 -Height 28 -Parent $script:AdvancedGroupBox
+    $reset = New-Button -Text 'Reset Config' -X 16 -Y 130 -Width 120 -Height 28 -Parent $script:AdvancedGroupBox
+    $reset.TabIndex = 19
     $reset.Add_Click({ Invoke-GuiAction { Reset-Changes } })
 
-    $uninstallDesktop = New-Button -Text 'Uninstall Desktop' -X 16 -Y 130 -Width 142 -Height 28 -Parent $script:AdvancedGroupBox
+    $uninstallDesktop = New-Button -Text 'Uninstall Desktop' -X 144 -Y 130 -Width 142 -Height 28 -Parent $script:AdvancedGroupBox
+    $uninstallDesktop.TabIndex = 20
     $uninstallDesktop.Add_Click({ Invoke-GuiAction { Uninstall-ChatGPTDesktop } })
 
-    $uninstallCli = New-Button -Text 'Uninstall CLI' -X 166 -Y 130 -Width 118 -Height 28 -Parent $script:AdvancedGroupBox
+    $uninstallCli = New-Button -Text 'Uninstall CLI' -X 294 -Y 130 -Width 118 -Height 28 -Parent $script:AdvancedGroupBox
+    $uninstallCli.TabIndex = 21
     $uninstallCli.Add_Click({ Invoke-GuiAction { Uninstall-CodexCli } })
 
-    $uninstallUnc = New-Button -Text 'Uninstall All UNC Setup' -X 292 -Y 130 -Width 190 -Height 28 -Parent $script:AdvancedGroupBox
+    $uninstallUnc = New-Button -Text 'Uninstall UNC Setup' -X 420 -Y 130 -Width 174 -Height 28 -Parent $script:AdvancedGroupBox
+    $uninstallUnc.TabIndex = 22
     $uninstallUnc.Add_Click({ Invoke-GuiAction { Uninstall-UncSetup } })
 
     $script:LogLabel = New-Object System.Windows.Forms.Label
     $script:LogLabel.Text = 'Setup log'
-    $script:LogLabel.Location = New-Object System.Drawing.Point(24, 423)
+    $script:LogLabel.Location = New-Object System.Drawing.Point(24, 502)
     $script:LogLabel.Size = New-Object System.Drawing.Size(160, 22)
     $script:Form.Controls.Add($script:LogLabel)
 
     $script:LogBox = New-Object System.Windows.Forms.TextBox
-    $script:LogBox.Location = New-Object System.Drawing.Point(24, 448)
-    $script:LogBox.Size = New-Object System.Drawing.Size(820, 260)
+    $script:LogBox.Location = New-Object System.Drawing.Point(24, 527)
+    $script:LogBox.Size = New-Object System.Drawing.Size(820, 272)
     $script:LogBox.Multiline = $true
     $script:LogBox.ScrollBars = 'Vertical'
     $script:LogBox.ReadOnly = $true
+    $script:LogBox.TabStop = $false
     $script:LogBox.Font = New-Object System.Drawing.Font('Consolas', 9)
     $script:LogBox.BackColor = [System.Drawing.Color]::White
     $script:Form.Controls.Add($script:LogBox)
 
     $footer = New-Object System.Windows.Forms.Label
     $footer.Text = 'Tip: Existing config.toml is backed up first. CODEX_HOME is respected when set; otherwise config/support files use %USERPROFILE%\.codex.'
-    $footer.Location = New-Object System.Drawing.Point(24, 728)
+    $footer.Location = New-Object System.Drawing.Point(24, 814)
     $footer.Size = New-Object System.Drawing.Size(820, 24)
     $footer.ForeColor = [System.Drawing.Color]::DimGray
     $footer.AutoEllipsis = $true
     $script:Form.Controls.Add($footer)
 
+    $script:Form.AcceptButton = $fullSetup
+    $script:Form.CancelButton = $exit
     Set-AdvancedVisible -Visible $false
 }
 

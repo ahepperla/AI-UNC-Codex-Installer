@@ -53,13 +53,9 @@ struct InstallCodexView: View {
             HStack {
                 if codexInstalled {
                     Button {
-                        if state.recommendedSetupPausedForCodexInstall {
-                            Task { await state.runRecommendedSetup() }
-                        } else {
-                            state.skipInstallAndConfigure()
-                        }
+                        state.skipInstallAndConfigure()
                     } label: {
-                        Label(state.recommendedSetupPausedForCodexInstall ? "Continue Recommended Setup" : "Continue", systemImage: "arrow.right")
+                        Label("Continue", systemImage: "arrow.right")
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(state.isBusy)
@@ -190,13 +186,9 @@ struct InstallDesktopAppView: View {
             HStack {
                 if desktopInstalled {
                     Button {
-                        if state.recommendedSetupPausedForCodexInstall {
-                            Task { await state.runRecommendedSetup() }
-                        } else {
-                            Task { await state.continueAfterDesktopInstall() }
-                        }
+                        Task { await state.continueAfterDesktopInstall() }
                     } label: {
-                        Label(state.recommendedSetupPausedForCodexInstall ? "Continue Recommended Setup" : "Continue", systemImage: "arrow.right")
+                        Label("Continue", systemImage: "arrow.right")
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)

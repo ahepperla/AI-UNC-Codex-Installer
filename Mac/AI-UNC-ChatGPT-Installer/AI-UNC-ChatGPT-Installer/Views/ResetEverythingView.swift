@@ -21,7 +21,7 @@ struct ResetEverythingView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("Restore Backup")
-                    .font(.title2.weight(.semibold))
+                    .font(.headline)
 
                 if state.availableBackupURLs.isEmpty {
                     Text("No timestamped backups were found in \(state.codexConfigDirectoryPath). Choose a backup file manually.")

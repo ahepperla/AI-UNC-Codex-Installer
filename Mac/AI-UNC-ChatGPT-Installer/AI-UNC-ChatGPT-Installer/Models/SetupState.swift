@@ -113,8 +113,6 @@ final class SetupState: ObservableObject {
     @Published var moveInstallerToTrashOnFinish = true
     @Published var launchCodexAfterSetup = true
     @Published var setupReceipt: SetupReceipt?
-    @Published var recommendedSetupPausedForCodexInstall = false
-    @Published var desktopInstallSkipped = false
     @Published var workspaceDirectoryPath = ""
     @Published var showResetEverythingSheet = false
     @Published var availableBackupURLs: [URL] = []
@@ -178,12 +176,27 @@ final class SetupState: ObservableObject {
 
     var canContinueWithAPIKey: Bool {
         let hasTypedKey = !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return hasTypedKey || (selectedStorageMode == .keychain && dashboardSnapshot.keychainKeyExists)
+        guard !hasTypedKey else { return true }
+
+        switch selectedStorageMode {
+        case .keychain:
+            return dashboardSnapshot.keychainKeyExists
+        case .plaintextConfig:
+            return configManager.readPlaintextBearerToken()?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty == false
+        }
     }
 
     var apiKeyFieldHelpText: String {
         if selectedStorageMode == .keychain && dashboardSnapshot.keychainKeyExists {
             return "Existing Keychain key detected. Leave this blank to reuse it, or paste a new key to replace it."
+        }
+        if selectedStorageMode == .plaintextConfig,
+           configManager.readPlaintextBearerToken()?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty == false {
+            return "Existing plaintext key detected. Leave this blank to reuse it, or paste a new key to replace it."
         }
         return "Paste the UNC Azure OpenAI API key."
     }
@@ -270,8 +283,6 @@ final class SetupState: ObservableObject {
         statusMessage = ""
         errorMessage = nil
         codexInstallSucceeded = false
-        recommendedSetupPausedForCodexInstall = false
-        desktopInstallSkipped = false
         installLog = []
         installStatusTitle = ""
         installStatusDetail = ""
@@ -365,8 +376,6 @@ final class SetupState: ObservableObject {
         backupURL = nil
         lastConnectionTest = nil
         setupReceipt = nil
-        recommendedSetupPausedForCodexInstall = false
-        desktopInstallSkipped = false
         installStatusTitle = ""
         installStatusDetail = ""
         installStatusSeverity = nil
@@ -533,10 +542,6 @@ final class SetupState: ObservableObject {
         showDashboard = true
     }
 
-    func openCodexDesktopDownloadAndWait() {
-        openCodexDownloadPage()
-    }
-
     func installCodexCLI() async {
         beginInstallStatus(
             title: "Installing Codex CLI",
@@ -679,7 +684,6 @@ final class SetupState: ObservableObject {
                 return
             }
 
-            recommendedSetupPausedForCodexInstall = false
             if lastConnectionTest?.success == true {
                 statusMessage = "ChatGPT Desktop is installed. Setup is ready to finish."
                 currentStep = .finish
@@ -691,8 +695,6 @@ final class SetupState: ObservableObject {
     }
 
     func skipDesktopInstallForNow() {
-        desktopInstallSkipped = true
-        recommendedSetupPausedForCodexInstall = false
         setupReceipt = makeSetupReceipt(installation: detection ?? dashboardSnapshot.installation)
         if lastConnectionTest?.success == true {
             statusMessage = "UNC config is ready. ChatGPT Desktop can be installed later from the dashboard."
@@ -747,40 +749,6 @@ final class SetupState: ObservableObject {
         )
     }
 
-    func launchCodex() async {
-        errorMessage = nil
-        let installation = await codexLocator.detectInstallation()
-        detection = installation
-        codexInstallSucceeded = installation.isInstalled
-        setupReceipt = makeSetupReceipt(installation: installation)
-
-        if let appPath = installation.desktopAppPath {
-            let url = URL(fileURLWithPath: appPath)
-            do {
-                try await openApplication(at: url)
-                statusMessage = "Opened ChatGPT Desktop."
-            } catch {
-                errorMessage = "Could not open ChatGPT Desktop: \(error.localizedDescription)"
-            }
-            return
-        }
-
-        if let cliPath = installation.cliPath {
-            let workspaceURL: URL
-            do {
-                workspaceURL = try workspaceManager.ensureWorkspaceDirectory()
-                workspaceDirectoryPath = workspaceURL.path
-            } catch {
-                errorMessage = "Could not prepare project parent folder: \(error.localizedDescription)"
-                return
-            }
-            await launchCLIInTerminal(cliPath: cliPath, workspaceURL: workspaceURL)
-            return
-        }
-
-        errorMessage = "Codex is not installed."
-    }
-
     func openCodexDesktopApp() async {
         errorMessage = nil
         let installation = await codexLocator.detectInstallation()
@@ -828,12 +796,6 @@ final class SetupState: ObservableObject {
 
     func openConfigFolder() {
         NSWorkspace.shared.open(configManager.configDirectory)
-    }
-
-    func openCodexDownloadPage() {
-        errorMessage = nil
-        statusMessage = "Opened the official Codex page."
-        NSWorkspace.shared.open(CodexInstaller.officialCodexURL)
     }
 
     func revealBackup() {
@@ -1050,10 +1012,10 @@ final class SetupState: ObservableObject {
     private func normalizeReasoningForSelectedModel() {
         if selectedModel.supportsReasoningSelection {
             if let selectedReasoningEffort,
-               selectedModel.supportedReasoningEfforts.contains(selectedReasoningEffort) {
+               selectedModel.selectableReasoningEfforts.contains(selectedReasoningEffort) {
                 return
             }
-            selectedReasoningEffort = selectedModel.defaultReasoningEffort ?? selectedModel.supportedReasoningEfforts.first
+            selectedReasoningEffort = selectedModel.defaultReasoningEffort ?? selectedModel.selectableReasoningEfforts.first
         } else {
             selectedReasoningEffort = nil
         }
@@ -1066,7 +1028,7 @@ final class SetupState: ObservableObject {
 
         if let rawReasoningEffort = summary.reasoningEffort,
            let reasoningEffort = CodexReasoningEffort(rawValue: rawReasoningEffort),
-           selectedModel.supportedReasoningEfforts.contains(reasoningEffort) {
+           selectedModel.selectableReasoningEfforts.contains(reasoningEffort) {
             selectedReasoningEffort = reasoningEffort
         } else {
             normalizeReasoningForSelectedModel()
@@ -1255,13 +1217,6 @@ final class SetupState: ObservableObject {
         }
     }
 
-    private func routeAfterSuccessfulConnectionTest(installation: CodexInstallation) {
-        detection = installation
-        setupReceipt = makeSetupReceipt(installation: installation)
-        statusMessage = "UNC endpoint test succeeded."
-        currentStep = .finish
-    }
-
     private func launchCLIInTerminal(cliPath: String, workspaceURL: URL) async {
         let command = cliLaunchCommand(
             cliPath: cliPath,
@@ -1308,7 +1263,7 @@ final class SetupState: ObservableObject {
         return commands.joined(separator: "; ")
     }
 
-    private func openApplication(at url: URL, workspaceURL: URL? = nil) async throws {
+    private func openApplication(at url: URL) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
             let configuration = NSWorkspace.OpenConfiguration()
             if let codexHomeEnvironmentValue {
@@ -1316,21 +1271,11 @@ final class SetupState: ObservableObject {
                 environment[CodexHomeLocation.environmentVariableName] = codexHomeEnvironmentValue
                 configuration.environment = environment
             }
-            if let workspaceURL {
-                NSWorkspace.shared.open([workspaceURL], withApplicationAt: url, configuration: configuration) { _, error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume(returning: ())
-                    }
-                }
-            } else {
-                NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume(returning: ())
-                    }
+            NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: ())
                 }
             }
         }

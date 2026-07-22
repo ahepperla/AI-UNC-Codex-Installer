@@ -31,14 +31,18 @@ private struct AppHeader: View {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 52, height: 52)
+                .frame(width: 48, height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text("AI @ UNC ChatGPT Installer")
                     .font(.title2.weight(.semibold))
-                Text("Sets up ChatGPT Desktop and Codex CLI for the UNC endpoint. \(InstallerMetadata.displayText)")
+                Text("Configures ChatGPT Desktop and Codex CLI for the UNC endpoint.")
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(InstallerMetadata.displayText)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
 
             Spacer()
@@ -64,7 +68,7 @@ private struct AppHeader: View {
             }
         }
         .padding(.horizontal, 28)
-        .padding(.vertical, 18)
+        .padding(.vertical, 14)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 }

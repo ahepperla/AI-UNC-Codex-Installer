@@ -57,13 +57,17 @@ The script prompts for the UNC Azure OpenAI API key, lets the user keep the reco
 - Remove the old empty `Documents/Codex/ChatGPT` project folder if a previous installer run created it and it has no files.
 - Let advanced users choose a different project parent folder.
 - Default to `gpt-5.6-sol` with `medium` reasoning, the standard/default Codex effort.
-- Offer `low`, `medium`, `high`, `xhigh`, and `max` reasoning for the approved `gpt-5.6` models.
+- Show a short, task-oriented description for every model and reasoning choice.
+- On Mac and Windows, offer `low`, `medium`, `high`, `xhigh`, and `ultra` for `gpt-5.6-sol` and `gpt-5.6-terra`; offer `low` through `xhigh` for `gpt-5.6-luna` and the other currently verified reasoning models.
+- Keep `max` out of the desktop installer because ChatGPT Desktop hides it by default. The generated catalog still preserves `max`, and the Linux/CLI installer still offers it where supported.
 - Offer only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
 - Omit `model_reasoning_effort` for alternate models unless their supported values are known.
 - Keep one active approved model in `config.toml` and, when Codex is available, write a filtered `model_catalog_json` generated from Codex's current model catalog so Codex does not show unsupported OpenAI models.
+- Preserve each current Codex catalog entry's supported reasoning levels, using installer fallbacks only for synthesized `gpt-5.6` entries.
 - Add approved `gpt-5.6` entries to the filtered catalog when the local Codex catalog has not caught up yet.
 - Back up an existing `config.toml` before writing the UNC config.
 - Test the UNC Responses API endpoint before marking setup complete.
+- On Linux/HPC, append one marked API key block without replacing an existing `~/.bashrc`; reruns preserve its file identity, metadata, links, and all content outside that block.
 - Offer ChatGPT Desktop and Codex CLI install or launch actions only after configuration succeeds.
 - Open ChatGPT Desktop by default after setup without sending a workspace path, so a new install does not get an automatic project entry.
 - Keep setup receipts and support diagnostics for troubleshooting.

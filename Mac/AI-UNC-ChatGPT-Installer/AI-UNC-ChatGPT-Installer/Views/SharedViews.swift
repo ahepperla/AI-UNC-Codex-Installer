@@ -20,7 +20,7 @@ struct WizardContainerView: View {
                 }
                 Spacer()
             }
-            .frame(width: 220)
+            .frame(width: 210)
             .padding(20)
             .background(Color(nsColor: .underPageBackgroundColor))
 
@@ -91,8 +91,10 @@ private struct StepRow: View {
             Text(step.title)
                 .font(.callout.weight(isCurrent ? .semibold : .regular))
                 .foregroundStyle(isCurrent ? .primary : .secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var circleColor: Color {
@@ -282,56 +284,72 @@ struct ModelAndReasoningControls: View {
     var isDisabled = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 12) {
-                Text("Model")
-                    .font(.headline)
-                    .frame(width: 110, alignment: .leading)
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .center, spacing: 12) {
+                    Text("Model")
+                        .font(.headline)
+                        .frame(width: 110, alignment: .leading)
 
-                Picker("Model", selection: $selectedModel) {
-                    ForEach(CodexModel.approvedCodexModels) { model in
-                        Text(model.displayLabel).tag(model)
-                    }
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .frame(width: 250, alignment: .leading)
-                .disabled(isDisabled)
-            }
-
-            HStack(alignment: .center, spacing: 12) {
-                Text("Reasoning")
-                    .font(.headline)
-                    .frame(width: 110, alignment: .leading)
-
-                if selectedModel.supportsReasoningSelection {
-                    Picker("Reasoning", selection: $selectedReasoningEffort) {
-                        ForEach(selectedModel.supportedReasoningEfforts) { effort in
-                            Text(effort.label).tag(Optional(effort))
+                    Picker("Model", selection: $selectedModel) {
+                        ForEach(CodexModel.approvedCodexModels) { model in
+                            Text(model.displayLabel).tag(model)
                         }
                     }
                     .pickerStyle(.menu)
                     .labelsHidden()
-                    .frame(width: 160, alignment: .leading)
+                    .controlSize(.large)
+                    .frame(width: 270, alignment: .leading)
                     .disabled(isDisabled)
-                } else {
-                    Text("Model default")
-                        .foregroundStyle(.secondary)
                 }
+
+                Text(selectedModel.modelHelpText)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 122)
+                    .frame(maxWidth: 620, alignment: .leading)
             }
 
-            Text(helpText)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .center, spacing: 12) {
+                    Text("Reasoning")
+                        .font(.headline)
+                        .frame(width: 110, alignment: .leading)
+
+                    if selectedModel.supportsReasoningSelection {
+                        Picker("Reasoning", selection: $selectedReasoningEffort) {
+                            ForEach(selectedModel.selectableReasoningEfforts) { effort in
+                                Text(effort.label).tag(Optional(effort))
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .controlSize(.large)
+                        .frame(width: 180, alignment: .leading)
+                        .disabled(isDisabled)
+                    } else {
+                        Text("Model default")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 180, alignment: .leading)
+                    }
+                }
+
+                Text(reasoningHelpText)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 122)
+                    .frame(maxWidth: 620, alignment: .leading)
+            }
         }
     }
 
-    private var helpText: String {
+    private var reasoningHelpText: String {
         if let selectedReasoningEffort {
-            return "\(selectedModel.label): \(selectedReasoningEffort.label) reasoning. \(selectedReasoningEffort.helpText)"
+            return selectedReasoningEffort.helpText
         }
-        return "\(selectedModel.label): Model default reasoning. \(selectedModel.reasoningHelpText)"
+        return selectedModel.reasoningHelpText
     }
 }
 

@@ -281,9 +281,7 @@ final class CodexInstaller: @unchecked Sendable {
         try fileManager.createDirectory(at: parentURL, withIntermediateDirectories: true)
 
         let stagingURL = parentURL.appendingPathComponent("\(targetURL.lastPathComponent).installing-\(UUID().uuidString)", isDirectory: true)
-        if fileManager.fileExists(atPath: stagingURL.path) {
-            try fileManager.removeItem(at: stagingURL)
-        }
+        defer { try? fileManager.removeItem(at: stagingURL) }
 
         let copy = try await runner.run(
             executable: "/usr/bin/ditto",
@@ -293,10 +291,33 @@ final class CodexInstaller: @unchecked Sendable {
             throw CodexInstallerError.commandFailed(copy.combinedOutput.isEmpty ? "ditto could not copy \(sourceURL.lastPathComponent)." : copy.combinedOutput)
         }
 
-        if fileManager.fileExists(atPath: targetURL.path) {
-            try fileManager.removeItem(at: targetURL)
+        guard fileManager.fileExists(atPath: targetURL.path) else {
+            try fileManager.moveItem(at: stagingURL, to: targetURL)
+            return
         }
-        try fileManager.moveItem(at: stagingURL, to: targetURL)
+
+        let backupURL = parentURL.appendingPathComponent(
+            "\(targetURL.lastPathComponent).previous-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try fileManager.moveItem(at: targetURL, to: backupURL)
+
+        do {
+            try fileManager.moveItem(at: stagingURL, to: targetURL)
+            try? fileManager.removeItem(at: backupURL)
+        } catch {
+            do {
+                if fileManager.fileExists(atPath: targetURL.path) {
+                    try fileManager.removeItem(at: targetURL)
+                }
+                try fileManager.moveItem(at: backupURL, to: targetURL)
+            } catch let rollbackError {
+                throw CodexInstallerError.commandFailed(
+                    "ChatGPT Desktop replacement failed, and the previous app could not be restored automatically. It remains at \(backupURL.path). \(rollbackError.localizedDescription)"
+                )
+            }
+            throw error
+        }
     }
 
     private func runningDesktopAppDescription() async -> String? {

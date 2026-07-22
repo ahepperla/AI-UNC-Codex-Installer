@@ -14,8 +14,9 @@ struct DashboardView: View {
                     )
 
                     statusGrid
-                    actions
+                    quickActions
                     recommendedConfiguration
+                    maintenanceActions
                 }
                 .padding(28)
             }
@@ -139,9 +140,9 @@ struct DashboardView: View {
         }
     }
 
-    private var actions: some View {
+    private var quickActions: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Actions")
+            Text("Quick Actions")
                 .font(.title2.weight(.semibold))
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 10)], alignment: .leading, spacing: 10) {
@@ -188,9 +189,40 @@ struct DashboardView: View {
                 Button {
                     state.openWorkspaceFolder()
                 } label: {
-                    actionLabel("Open Folder", systemImage: "folder.fill")
+                    actionLabel("Open Project Parent", systemImage: "folder.fill")
                 }
 
+                Button {
+                    state.reconfigureAPIKey()
+                } label: {
+                    actionLabel("Reconfigure API Key", systemImage: "key")
+                }
+
+                Button {
+                    Task { await state.runDiagnostics() }
+                } label: {
+                    actionLabel("Run Diagnostics", systemImage: "stethoscope")
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(state.isBusy)
+
+            if !state.installStatusTitle.isEmpty {
+                InstallStatusPanel(state: state)
+            }
+        }
+    }
+
+    private var maintenanceActions: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Maintenance and Removal")
+                .font(.title2.weight(.semibold))
+
+            Text("These tools change, restore, or remove parts of the current installation.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 10)], alignment: .leading, spacing: 10) {
                 Button {
                     state.revealBackup()
                 } label: {
@@ -204,15 +236,9 @@ struct DashboardView: View {
                 }
 
                 Button {
-                    state.reconfigureAPIKey()
-                } label: {
-                    actionLabel("Reconfigure API Key", systemImage: "key")
-                }
-
-                Button {
                     Task { await state.resetCodexConfigFromDashboard() }
                 } label: {
-                    actionLabel("Reset Codex Config", systemImage: "doc.badge.gearshape")
+                    actionLabel("Rewrite Codex Config", systemImage: "doc.badge.gearshape")
                 }
 
                 Button(role: .destructive) {
@@ -232,27 +258,17 @@ struct DashboardView: View {
                 Button(role: .destructive) {
                     state.prepareResetEverything()
                 } label: {
-                    actionLabel("Reset Everything", systemImage: "trash")
+                    actionLabel("Reset and Restore", systemImage: "arrow.counterclockwise")
                 }
 
                 Button(role: .destructive) {
                     Task { await state.uninstallAllUNCSetup() }
                 } label: {
-                    actionLabel("Uninstall All", systemImage: "trash.slash")
-                }
-
-                Button {
-                    Task { await state.runDiagnostics() }
-                } label: {
-                    actionLabel("Run Diagnostics", systemImage: "stethoscope")
+                    actionLabel("Uninstall UNC Setup", systemImage: "trash.slash")
                 }
             }
             .buttonStyle(.bordered)
             .disabled(state.isBusy)
-
-            if !state.installStatusTitle.isEmpty {
-                InstallStatusPanel(state: state)
-            }
         }
     }
 

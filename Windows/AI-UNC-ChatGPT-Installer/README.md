@@ -9,7 +9,7 @@ This is the Windows version of the UNC ChatGPT setup tool. It is a PowerShell GU
 3. Paste the UNC Azure OpenAI API key.
 4. Click `Run Recommended Setup`.
 
-Most users should only need the recommended setup button. Troubleshooting and reset tools are under `Show Advanced Options`.
+Most users should only need the recommended setup button. Troubleshooting and reset tools are under `Show Advanced Tools`.
 
 ## What It Does
 
@@ -21,10 +21,13 @@ Most users should only need the recommended setup button. Troubleshooting and re
 - Removes the old empty `Documents\Codex\ChatGPT` project folder if a previous installer run created it and it has no files.
 - Lets advanced users choose a different project parent folder.
 - Defaults to `gpt-5.6-sol` with `medium` reasoning, the standard/default Codex effort.
-- Offers `low`, `medium`, `high`, `xhigh`, and `max` reasoning for the approved `gpt-5.6` models.
+- Shows a short, task-oriented description for every model and reasoning choice.
+- Offers `low`, `medium`, `high`, `xhigh`, and `ultra` for `gpt-5.6-sol` and `gpt-5.6-terra`; offers `low` through `xhigh` for `gpt-5.6-luna` and the other currently verified reasoning models.
+- Keeps `max` out of the installer because ChatGPT Desktop hides it by default, while preserving `max` in the generated catalog where the model supports it.
 - Offers only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
 - Omits `model_reasoning_effort` for alternate models unless their supported values are known.
 - When Codex CLI is available, writes `<Codex home>\unc\model-catalog.json` by filtering Codex's current model catalog and points `model_catalog_json` at it so Codex shows only approved UNC models.
+- Preserves each current Codex catalog entry's supported reasoning levels, using installer fallbacks only for synthesized `gpt-5.6` entries.
 - Adds approved `gpt-5.6` entries to the filtered catalog when the local Codex catalog has not caught up yet.
 - Writes and tests the UNC config before offering ChatGPT Desktop or Codex CLI install/open actions.
 - Backs up the existing `<Codex home>\config.toml`.
@@ -62,6 +65,6 @@ Existing Codex config files are copied to `config.toml.backup.<timestamp>` befor
 
 - The GUI is plain on purpose. It is meant to be easy to inspect and rerun.
 - Users may need to open a new Terminal after setup so Windows picks up the updated environment variable.
-- If install fails, use the log text in the app or save a support report from Advanced Options.
+- If install fails, use the log text in the app or save a support report from Advanced Tools.
 - Reset removes installer-created environment/config changes but does not delete project parent folders or user files.
-- Advanced Options includes uninstall actions for ChatGPT Desktop, Codex CLI, and all UNC-specific setup. Uninstall All restores or removes the active Codex config and removes installer support files, but leaves project parent folders and user files alone.
+- Advanced Tools includes uninstall actions for ChatGPT Desktop, Codex CLI, and all UNC-specific setup. Uninstall UNC Setup restores or removes the active Codex config and removes installer support files, but leaves project parent folders and user files alone.

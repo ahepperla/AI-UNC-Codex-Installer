@@ -1,7 +1,7 @@
 import Foundation
 
 enum InstallerMetadata {
-    static let version = "2026.07.22"
+    static let version = "2026.07.22.3"
     static let buildDate = "2026-07-22"
 
     static var displayText: String {

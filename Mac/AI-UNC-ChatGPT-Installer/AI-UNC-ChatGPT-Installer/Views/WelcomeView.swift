@@ -19,6 +19,7 @@ struct WelcomeView: View {
 
                         SecureField("Paste API key", text: $state.apiKey)
                             .textFieldStyle(.roundedBorder)
+                            .controlSize(.large)
                             .frame(maxWidth: 560)
                             .disabled(state.isBusy)
 
@@ -27,6 +28,9 @@ struct WelcomeView: View {
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+
+                    Divider()
+                        .frame(maxWidth: 620)
 
                     ModelAndReasoningControls(
                         selectedModel: $state.selectedModel,
@@ -46,21 +50,20 @@ struct WelcomeView: View {
                         .keyboardShortcut(.defaultAction)
                         .disabled(state.isBusy || !state.canContinueWithAPIKey)
                     }
+                    .padding(.leading, 122)
 
                     VStack(alignment: .leading, spacing: 10) {
+                        Text("Setup summary")
+                            .font(.headline)
                         AlignedIconText("Uses \(state.workspaceDirectoryPath) as the project parent.", systemImage: "folder.fill")
-                        if state.workspaceUsesLegacyCodexDirectory {
-                            AlignedIconText("Uses Documents/Codex as the project parent.", systemImage: "folder.badge.gearshape")
-                        }
-                        AlignedIconText("Writes Codex config under \(state.codexHomeDescription).", systemImage: "doc.text")
+                        AlignedIconText("Writes Codex configuration to \(state.codexConfigDirectoryPath).", systemImage: "doc.text")
                         AlignedIconText("Saves the key in macOS Keychain.", systemImage: "lock.shield")
                         AlignedIconText("Backs up existing Codex config before writing the UNC config.", systemImage: "archivebox")
                         AlignedIconText("Tests the UNC endpoint before marking setup complete.", systemImage: "network")
-                        AlignedIconText("Shows Codex install options only after configuration succeeds.", systemImage: "checklist.checked")
                     }
                 }
-                .padding(18)
-                .frame(maxWidth: 720, alignment: .leading)
+                .padding(20)
+                .frame(maxWidth: 760, alignment: .leading)
                 .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -134,10 +137,10 @@ struct WelcomeView: View {
                     }
                     .padding(.top, 10)
                 } label: {
-                    Text("Advanced Options")
+                    Text("Advanced Setup")
                         .font(.headline)
                 }
-                .frame(maxWidth: 720, alignment: .leading)
+                .frame(maxWidth: 760, alignment: .leading)
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }

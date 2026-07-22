@@ -40,10 +40,13 @@ Setup is not marked complete unless the endpoint test succeeds. ChatGPT Desktop 
 - Backs up the existing `<Codex home>/config.toml`.
 - Writes a fresh Codex config with `env_key = "UNC_AZURE_API_KEY"`.
 - Defaults to `gpt-5.6-sol` with `medium` reasoning, the standard/default Codex effort.
-- Offers `low`, `medium`, `high`, `xhigh`, and `max` reasoning for the approved `gpt-5.6` models.
+- Shows a short, task-oriented description for every model and reasoning choice.
+- Offers `low`, `medium`, `high`, `xhigh`, and `ultra` for `gpt-5.6-sol` and `gpt-5.6-terra`; offers `low` through `xhigh` for `gpt-5.6-luna` and the other currently verified reasoning models.
+- Keeps `max` out of the installer because ChatGPT Desktop hides it by default, while preserving `max` in the generated catalog where the model supports it.
 - Offers only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
 - Omits `model_reasoning_effort` for alternate models unless their supported values are known.
 - When Codex is available, writes `<Codex home>/unc/model-catalog.json` by filtering Codex's current model catalog and points `model_catalog_json` at it so Codex shows only approved UNC models.
+- Preserves each current Codex catalog entry's supported reasoning levels, using installer fallbacks only for synthesized `gpt-5.6` entries.
 - Adds approved `gpt-5.6` entries to the filtered catalog when the local Codex catalog has not caught up yet.
 - Creates `~/Library/LaunchAgents/edu.unc.codex.env.plist`.
 - Creates `<Codex home>/unc/load_unc_codex_env.sh`.

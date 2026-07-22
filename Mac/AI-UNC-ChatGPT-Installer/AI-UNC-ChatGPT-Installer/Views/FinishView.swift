@@ -100,7 +100,7 @@ struct FinishView: View {
                         HStack(alignment: .center, spacing: 8) {
                             Image(systemName: "folder.fill")
                                 .frame(width: 20)
-                            Text("Project Parent")
+                            Text("Project parent")
                         }
                         .font(.headline)
                         .frame(width: 136, alignment: .leading)
@@ -129,17 +129,11 @@ struct FinishView: View {
                     InstallStatusPanel(state: state)
                 }
             }
-            .padding(14)
             .frame(maxWidth: 720, alignment: .leading)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color.secondary.opacity(0.16))
-            )
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("Setup Receipt")
-                    .font(.title2.weight(.semibold))
+                    .font(.headline)
 
                 Text(state.setupReceiptText)
                     .font(.system(.callout, design: .monospaced))

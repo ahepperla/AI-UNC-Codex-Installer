@@ -2,7 +2,7 @@
 set -euo pipefail
 
 DEFAULT_MODEL="gpt-5.6-sol"
-INSTALLER_VERSION="2026.07.22"
+INSTALLER_VERSION="2026.07.22.3"
 INSTALLER_BUILD_DATE="2026-07-22"
 MODEL="$DEFAULT_MODEL"
 REASONING_EFFORT="medium"
@@ -26,6 +26,19 @@ cleanup_temp_files() {
 
 register_temp_file() {
   TEMP_FILES+=("$1")
+}
+
+unregister_temp_file() {
+  local path_to_keep="$1"
+  local path
+  local remaining=()
+
+  for path in "${TEMP_FILES[@]:-}"; do
+    if [[ "$path" != "$path_to_keep" ]]; then
+      remaining+=("$path")
+    fi
+  done
+  TEMP_FILES=("${remaining[@]}")
 }
 
 trap cleanup_temp_files EXIT
@@ -94,23 +107,64 @@ toml_escape() {
   printf "%s" "$value"
 }
 
-json_escape() {
-  local value="$1"
-  value=${value//\\/\\\\}
-  value=${value//\"/\\\"}
-  value=${value//$'\n'/\\n}
-  printf "%s" "$value"
+unique_timestamped_path() {
+  local prefix="$1"
+  local base="${prefix}.$(date +%Y%m%d_%H%M%S)"
+  local candidate="$base"
+  local suffix=1
+
+  while [[ -e "$candidate" ]]; do
+    candidate="${base}.${suffix}"
+    suffix=$((suffix + 1))
+  done
+
+  printf "%s" "$candidate"
 }
 
 reasoning_description() {
   case "$1" in
-    low) printf "Faster responses for straightforward tasks." ;;
-    medium) printf "Standard default for most UNC Codex work." ;;
-    high) printf "More careful reasoning for complex changes." ;;
-    xhigh) printf "Most thorough reasoning, with slower responses." ;;
-    max) printf "Maximum reasoning for the hardest tasks." ;;
+    low) printf "Faster responses for straightforward tasks, with less time spent reasoning." ;;
+    medium) printf "Recommended balance of speed and careful reasoning for most work." ;;
+    high) printf "More careful reasoning for complex code changes and troubleshooting." ;;
+    xhigh) printf "Deep reasoning for difficult tasks; responses may take longer." ;;
+    max) printf "Maximum supported reasoning for the hardest tasks; expect the longest waits." ;;
+    ultra) printf "Maximum reasoning with automatic task delegation for large, multi-step work." ;;
     *) printf "Uses model-supported reasoning." ;;
   esac
+}
+
+model_description() {
+  case "$1" in
+    gpt-5.6-sol) printf "Recommended default and latest frontier model for complex coding and long-running work." ;;
+    gpt-5.6-terra) printf "Balanced model for everyday coding, debugging, and general work." ;;
+    gpt-5.6-luna) printf "Fast, lightweight model for shorter coding tasks and quick edits." ;;
+    gpt-5.5) printf "Frontier model for complex coding, research, and real-world work." ;;
+    gpt-5.4) printf "Strong model for everyday coding and debugging." ;;
+    gpt-5.4-mini) printf "Fast, lightweight model for straightforward coding tasks." ;;
+    gpt-5.4-nano) printf "Small approved model for simple tasks and compatibility." ;;
+    gpt-5.3-codex) printf "Coding-focused model for software development workflows." ;;
+    gpt-5.2) printf "Model for professional work and long-running agent tasks." ;;
+    gpt-5.1) printf "Earlier general-purpose GPT-5 model for existing workflows." ;;
+    gpt-5) printf "Earlier GPT-5 model for general work and compatibility." ;;
+    gpt-5-mini) printf "Earlier lightweight GPT-5 model for simple, quick tasks." ;;
+    gpt-5-nano) printf "Small earlier GPT-5 model for basic, low-complexity tasks." ;;
+    gpt-4.1) printf "Earlier general-purpose model for coding and instruction-following tasks." ;;
+    gpt-4.1-mini) printf "Earlier lightweight general-purpose model for shorter tasks." ;;
+    gpt-4.1-nano) printf "Small earlier model for basic, low-complexity tasks." ;;
+    gpt-4o) printf "Earlier general-purpose model for text, coding, and multimodal workflows." ;;
+    gpt-4o-mini) printf "Earlier lightweight model for shorter text and multimodal tasks." ;;
+    o1) printf "Earlier deep-reasoning model for complex problems; uses model-default effort." ;;
+    o1-preview) printf "Preview-era deep-reasoning model for compatibility with existing workflows." ;;
+    o1-mini) printf "Earlier compact reasoning model for focused problems; uses model-default effort." ;;
+    o3-mini) printf "Earlier compact reasoning model for coding, math, and logic tasks." ;;
+    chat) printf "Compatibility alias for the gpt-4.1-mini chat deployment." ;;
+    *) printf "Approved UNC model." ;;
+  esac
+}
+
+show_selected_model_description() {
+  printf "Selected model: %s\n" "$MODEL"
+  printf "  %s\n" "$(model_description "$MODEL")"
 }
 
 ask_yes_no() {
@@ -148,12 +202,14 @@ choose_model() {
 
     if [[ "$answer" =~ ^[0-9]+$ ]] && (( answer >= 1 && answer <= ${#CODEX_MODEL_DEPLOYMENTS[@]} )); then
       MODEL="${CODEX_MODEL_DEPLOYMENTS[$((answer - 1))]}"
+      show_selected_model_description
       return 0
     fi
 
     for index in "${!CODEX_MODEL_DEPLOYMENTS[@]}"; do
       if [[ "$answer" == "${CODEX_MODEL_DEPLOYMENTS[$index]}" ]]; then
         MODEL="$answer"
+        show_selected_model_description
         return 0
       fi
     done
@@ -164,44 +220,34 @@ choose_model() {
 
 choose_reasoning_effort() {
   local answer
+  local option
+  local matched
+  local -a options=()
 
   echo "Reasoning effort controls how much time Codex spends thinking."
 
-  if [[ "$MODEL" == gpt-5.6-* ]]; then
-    echo "Options: low, medium, high, xhigh, max"
-    while true; do
-      read -r -p "Use medium reasoning effort? [Y/n or type another option] " answer
-      answer=${answer:-y}
-      case "$answer" in
-        y|Y|yes|YES|Yes)
-          REASONING_EFFORT="medium"
-          return 0
-          ;;
-        n|N|no|NO|No)
-          read -r -p "Choose reasoning effort [low/medium/high/xhigh/max]: " answer
-          ;;
-      esac
+  case "$MODEL" in
+    gpt-5.6-sol|gpt-5.6-terra)
+      options=(low medium high xhigh max ultra)
+      ;;
+    gpt-5.6-luna)
+      options=(low medium high xhigh max)
+      ;;
+    gpt-5.5|gpt-5.4|gpt-5.4-mini|gpt-5.3-codex|gpt-5.2)
+      options=(low medium high xhigh)
+      ;;
+    *)
+      REASONING_EFFORT=""
+      echo "Reasoning effort: model default for $MODEL."
+      echo "This script does not write unsupported reasoning options for alternate models."
+      return 0
+      ;;
+  esac
 
-      case "$answer" in
-        low|medium|high|xhigh|max)
-          REASONING_EFFORT="$answer"
-          return 0
-          ;;
-        *)
-          echo "Please choose one of: low, medium, high, xhigh, max."
-          ;;
-      esac
-    done
-  fi
-
-  if [[ "$MODEL" != "gpt-5.5" ]]; then
-    REASONING_EFFORT=""
-    echo "Reasoning effort: model default for $MODEL."
-    echo "This script does not write unsupported reasoning options for alternate models."
-    return 0
-  fi
-
-  echo "Options: low, medium, high, xhigh"
+  echo "Reasoning options:"
+  for option in "${options[@]}"; do
+    printf "  %-6s %s\n" "$option" "$(reasoning_description "$option")"
+  done
 
   while true; do
     read -r -p "Use medium reasoning effort? [Y/n or type another option] " answer
@@ -212,108 +258,165 @@ choose_reasoning_effort() {
         return 0
         ;;
       n|N|no|NO|No)
-        read -r -p "Choose reasoning effort [low/medium/high/xhigh]: " answer
+        read -r -p "Choose reasoning effort: " answer
         ;;
     esac
 
-    case "$answer" in
-      low|medium|high|xhigh)
+    matched=false
+    for option in "${options[@]}"; do
+      if [[ "$answer" == "$option" ]]; then
         REASONING_EFFORT="$answer"
+        matched=true
+        break
+      fi
+    done
+    if [[ "$matched" == true ]]; then
         return 0
-        ;;
-      *)
-        echo "Please choose one of: low, medium, high, xhigh."
-        ;;
-    esac
+    fi
+
+    echo "Please choose one of: ${options[*]}."
   done
-}
-
-source_bashrc_for_this_session() {
-  local bashrc="$HOME/.bashrc"
-  local old_opts="$-"
-  local old_pipefail="off"
-
-  if [[ ! -f "$bashrc" ]]; then
-    return 0
-  fi
-
-  if set -o | grep -q '^pipefail[[:space:]]*on'; then
-    old_pipefail="on"
-  fi
-
-  set +u
-  if source "$bashrc"; then
-    echo "Loaded ~/.bashrc for this setup session."
-  else
-    echo "Could not load ~/.bashrc automatically. Open a new Bash session or run: source ~/.bashrc"
-  fi
-
-  case "$old_opts" in *e*) set -e ;; *) set +e ;; esac
-  case "$old_opts" in *u*) set -u ;; *) set +u ;; esac
-  if [[ "$old_pipefail" == "on" ]]; then
-    set -o pipefail
-  else
-    set +o pipefail
-  fi
 }
 
 write_bashrc_export() {
   local api_key="$1"
   local bashrc="$HOME/.bashrc"
+  local bashrc_target="$bashrc"
   local temp_file
-  local new_bashrc
+
+  if [[ -L "$bashrc" ]]; then
+    if ! bashrc_target="$(readlink -f "$bashrc")" || [[ -z "$bashrc_target" ]]; then
+      echo "Could not resolve the ~/.bashrc symlink target."
+      return 1
+    fi
+  fi
+  if [[ ! -e "$bashrc_target" ]]; then
+    (umask 077; : > "$bashrc_target")
+  fi
+
+  if ! grep -Fqx "$MARKER_START" "$bashrc_target" &&
+     ! grep -Fqx "$MARKER_END" "$bashrc_target"; then
+    {
+      if [[ -s "$bashrc_target" ]]; then
+        printf "\n"
+      fi
+      printf "%s\n" "$MARKER_START"
+      printf "export %s=%s\n" "$ENV_KEY" "$(shell_quote "$api_key")"
+      printf "%s\n" "$MARKER_END"
+    } >> "$bashrc_target"
+    return 0
+  fi
 
   temp_file="$(mktemp "${TMPDIR:-/tmp}/unc-codex-bashrc.XXXXXX")"
-  new_bashrc="$(mktemp "$(dirname "$bashrc")/.bashrc.unc-chatgpt.XXXXXX")"
   register_temp_file "$temp_file"
-  register_temp_file "$new_bashrc"
-  touch "$bashrc"
 
-  awk -v start="$MARKER_START" -v end="$MARKER_END" '
-    $0 == start { skip = 1; next }
-    $0 == end { skip = 0; next }
-    skip != 1 { print }
-  ' "$bashrc" > "$temp_file"
+  if ! strip_bashrc_export "$bashrc_target" > "$temp_file"; then
+    echo "The existing installer block in ~/.bashrc is incomplete or duplicated."
+    echo "No changes were made. Remove or repair the marked block, then rerun setup."
+    return 1
+  fi
 
   {
-    cat "$temp_file"
     printf "\n%s\n" "$MARKER_START"
     printf "export %s=%s\n" "$ENV_KEY" "$(shell_quote "$api_key")"
     printf "%s\n" "$MARKER_END"
-  } > "$new_bashrc"
+  } >> "$temp_file"
 
-  chmod --reference="$bashrc" "$new_bashrc" 2>/dev/null || true
-  mv "$new_bashrc" "$bashrc"
+  overwrite_bashrc_contents "$temp_file" "$bashrc_target"
   rm -f "$temp_file"
 }
 
 remove_bashrc_export() {
   local bashrc="$HOME/.bashrc"
+  local bashrc_target="$bashrc"
   local temp_file
-  local new_bashrc
 
   if [[ ! -f "$bashrc" ]]; then
     echo "No ~/.bashrc file was found."
     return 0
   fi
 
+  if [[ -L "$bashrc" ]]; then
+    if ! bashrc_target="$(readlink -f "$bashrc")" || [[ -z "$bashrc_target" ]]; then
+      echo "Could not resolve the ~/.bashrc symlink target."
+      return 1
+    fi
+  fi
+
+  if ! grep -Fqx "$MARKER_START" "$bashrc_target" &&
+     ! grep -Fqx "$MARKER_END" "$bashrc_target"; then
+    echo "No installer-managed API key block was found in ~/.bashrc."
+    return 0
+  fi
+
   temp_file="$(mktemp "${TMPDIR:-/tmp}/unc-codex-bashrc.XXXXXX")"
-  new_bashrc="$(mktemp "$(dirname "$bashrc")/.bashrc.unc-chatgpt.XXXXXX")"
   register_temp_file "$temp_file"
-  register_temp_file "$new_bashrc"
 
-  awk -v start="$MARKER_START" -v end="$MARKER_END" '
-    $0 == start { skip = 1; next }
-    $0 == end { skip = 0; next }
-    skip != 1 { print }
-  ' "$bashrc" > "$temp_file"
+  if ! strip_bashrc_export "$bashrc_target" > "$temp_file"; then
+    echo "The installer block in ~/.bashrc is incomplete or duplicated."
+    echo "No changes were made. Remove or repair the marked block manually."
+    return 1
+  fi
 
-  cat "$temp_file" > "$new_bashrc"
-  chmod --reference="$bashrc" "$new_bashrc" 2>/dev/null || true
-  mv "$new_bashrc" "$bashrc"
+  overwrite_bashrc_contents "$temp_file" "$bashrc_target"
   rm -f "$temp_file"
   unset "$ENV_KEY" || true
   echo "Removed $ENV_KEY export block from ~/.bashrc."
+}
+
+strip_bashrc_export() {
+  local bashrc_target="$1"
+
+  awk -v start="$MARKER_START" -v end="$MARKER_END" '
+    $0 == start {
+      if (inside || found) {
+        invalid = 1
+        exit
+      }
+      inside = 1
+      found = 1
+      next
+    }
+    $0 == end {
+      if (!inside) {
+        invalid = 1
+        exit
+      }
+      inside = 0
+      next
+    }
+    !inside { print }
+    END {
+      if (invalid || inside || !found) {
+        exit 2
+      }
+    }
+  ' "$bashrc_target"
+}
+
+overwrite_bashrc_contents() {
+  local source_file="$1"
+  local bashrc_target="$2"
+  local original_file
+
+  original_file="$(mktemp "${TMPDIR:-/tmp}/unc-codex-bashrc-original.XXXXXX")"
+  register_temp_file "$original_file"
+  cat "$bashrc_target" > "$original_file"
+
+  if ! cat "$source_file" > "$bashrc_target" ||
+     ! cmp -s "$source_file" "$bashrc_target"; then
+    echo "Could not safely update ~/.bashrc; restoring its original contents."
+    if ! cat "$original_file" > "$bashrc_target" ||
+       ! cmp -s "$original_file" "$bashrc_target"; then
+      unregister_temp_file "$original_file"
+      echo "Automatic restoration failed. The original contents remain in:"
+      echo "  $original_file"
+      return 1
+    fi
+    return 1
+  fi
+
+  rm -f "$original_file"
 }
 
 write_model_catalog() {
@@ -363,17 +466,47 @@ deployments = args[1:separator]
 labels = args[separator + 1:]
 approved_labels = dict(zip(deployments, labels))
 reasoning_by_slug = {
-    "gpt-5.6-sol": ["low", "medium", "high", "xhigh", "max"],
-    "gpt-5.6-terra": ["low", "medium", "high", "xhigh", "max"],
+    "gpt-5.6-sol": ["low", "medium", "high", "xhigh", "max", "ultra"],
+    "gpt-5.6-terra": ["low", "medium", "high", "xhigh", "max", "ultra"],
     "gpt-5.6-luna": ["low", "medium", "high", "xhigh", "max"],
     "gpt-5.5": ["low", "medium", "high", "xhigh"],
+    "gpt-5.4": ["low", "medium", "high", "xhigh"],
+    "gpt-5.4-mini": ["low", "medium", "high", "xhigh"],
+    "gpt-5.3-codex": ["low", "medium", "high", "xhigh"],
+    "gpt-5.2": ["low", "medium", "high", "xhigh"],
 }
 reasoning_descriptions = {
-    "low": "Fast responses with lighter reasoning",
-    "medium": "Balances speed and reasoning depth for everyday tasks",
-    "high": "Greater reasoning depth for complex problems",
-    "xhigh": "Extra high reasoning depth for complex problems",
-    "max": "Maximum reasoning depth for the hardest problems",
+    "low": "Faster responses with lighter reasoning for straightforward tasks",
+    "medium": "Recommended balance of speed and reasoning depth for most work",
+    "high": "More careful reasoning for complex code changes and troubleshooting",
+    "xhigh": "Deep reasoning for difficult tasks, with longer response times",
+    "max": "Maximum supported reasoning for the hardest tasks",
+    "ultra": "Maximum reasoning with automatic task delegation for large, multi-step work",
+}
+model_descriptions = {
+    "gpt-5.6-sol": "Recommended default and latest frontier model for complex coding and long-running work.",
+    "gpt-5.6-terra": "Balanced model for everyday coding, debugging, and general work.",
+    "gpt-5.6-luna": "Fast, lightweight model for shorter coding tasks and quick edits.",
+    "gpt-5.5": "Frontier model for complex coding, research, and real-world work.",
+    "gpt-5.4": "Strong model for everyday coding and debugging.",
+    "gpt-5.4-mini": "Fast, lightweight model for straightforward coding tasks.",
+    "gpt-5.4-nano": "Small approved model for simple tasks and compatibility.",
+    "gpt-5.3-codex": "Coding-focused model for software development workflows.",
+    "gpt-5.2": "Model for professional work and long-running agent tasks.",
+    "gpt-5.1": "Earlier general-purpose GPT-5 model for existing workflows.",
+    "gpt-5": "Earlier GPT-5 model for general work and compatibility.",
+    "gpt-5-mini": "Earlier lightweight GPT-5 model for simple, quick tasks.",
+    "gpt-5-nano": "Small earlier GPT-5 model for basic, low-complexity tasks.",
+    "gpt-4.1": "Earlier general-purpose model for coding and instruction-following tasks.",
+    "gpt-4.1-mini": "Earlier lightweight general-purpose model for shorter tasks.",
+    "gpt-4.1-nano": "Small earlier model for basic, low-complexity tasks.",
+    "gpt-4o": "Earlier general-purpose model for text, coding, and multimodal workflows.",
+    "gpt-4o-mini": "Earlier lightweight model for shorter text and multimodal tasks.",
+    "o1": "Earlier deep-reasoning model for complex problems; uses model-default effort.",
+    "o1-preview": "Preview-era deep-reasoning model for compatibility with existing workflows.",
+    "o1-mini": "Earlier compact reasoning model for focused problems; uses model-default effort.",
+    "o3-mini": "Earlier compact reasoning model for coding, math, and logic tasks.",
+    "chat": "Compatibility alias for the gpt-4.1-mini chat deployment.",
 }
 
 with open(raw_catalog_path, "r", encoding="utf-8") as catalog_file:
@@ -405,22 +538,16 @@ for slug in deployments:
     entry = dict(model)
     entry["slug"] = slug
     entry["display_name"] = approved_labels[slug]
-    entry["description"] = (
-        "Recommended UNC model for ChatGPT/Codex work."
-        if slug == default_model
-        else "Approved UNC ChatGPT/Codex model."
-    )
+    entry["description"] = model_descriptions.get(slug, "Approved UNC model.")
     entry["priority"] = len(filtered_models)
     reasoning_levels = reasoning_by_slug.get(slug, [])
     if reasoning_levels:
         entry["default_reasoning_level"] = "medium"
-        entry["supported_reasoning_levels"] = [
-            {"effort": effort, "description": reasoning_descriptions[effort]}
-            for effort in reasoning_levels
-        ]
-    else:
-        entry.pop("default_reasoning_level", None)
-        entry.pop("supported_reasoning_levels", None)
+        if is_synthesized or not isinstance(entry.get("supported_reasoning_levels"), list):
+            entry["supported_reasoning_levels"] = [
+                {"effort": effort, "description": reasoning_descriptions[effort]}
+                for effort in reasoning_levels
+            ]
     if is_synthesized:
         entry.pop("availability_nux", None)
         entry.pop("upgrade", None)
@@ -428,6 +555,12 @@ for slug in deployments:
 
 if not filtered_models:
     raise SystemExit("No approved UNC models were present in the Codex catalog.")
+if any(
+    not isinstance(model.get("default_reasoning_level"), str)
+    or not isinstance(model.get("supported_reasoning_levels"), list)
+    for model in filtered_models
+):
+    raise SystemExit("Filtered model catalog was missing required reasoning fields.")
 
 catalog["fetched_at"] = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 catalog["models"] = filtered_models
@@ -467,7 +600,7 @@ write_codex_config() {
   register_temp_file "$temp_config"
 
   if [[ -f "$config_file" ]]; then
-    backup_file="$config_file.backup.$(date +%Y%m%d_%H%M%S)"
+    backup_file="$(unique_timestamped_path "$config_file.backup")"
     cp "$config_file" "$backup_file"
     echo "Backed up existing config:"
     echo "  $backup_file"
@@ -514,7 +647,7 @@ restore_or_remove_config_for_uninstall() {
   fi
 
   if [[ -f "$config_file" ]]; then
-    removed_file="$config_file.removed.$(date +%Y%m%d_%H%M%S)"
+    removed_file="$(unique_timestamped_path "$config_file.removed")"
     mv "$config_file" "$removed_file"
     echo "No prior config backup was found. Moved current config to:"
     echo "  $removed_file"
@@ -613,7 +746,9 @@ install_codex_cli_if_requested() {
   if printf 'n\n' | CODEX_NON_INTERACTIVE=1 CI=1 sh "$installer_script"; then
     rm -f "$installer_script"
     echo "Codex CLI install finished."
-    source_bashrc_for_this_session
+    if [[ -d "$HOME/.local/bin" && ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+      export PATH="$HOME/.local/bin:$PATH"
+    fi
     if command -v codex >/dev/null 2>&1; then
       echo "Codex CLI is available at:"
       echo "  $(command -v codex)"
@@ -623,7 +758,9 @@ install_codex_cli_if_requested() {
     fi
   else
     rm -f "$installer_script"
-    source_bashrc_for_this_session
+    if [[ -d "$HOME/.local/bin" && ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+      export PATH="$HOME/.local/bin:$PATH"
+    fi
     if command -v codex >/dev/null 2>&1; then
       echo "Codex CLI is available at:"
       echo "  $(command -v codex)"
@@ -637,11 +774,61 @@ install_codex_cli_if_requested() {
   fi
 }
 
+test_unc_endpoint() {
+  local api_key="$1"
+  local response_file
+  local payload
+  local http_status
+
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "Connection test could not run because curl was not found."
+    return 1
+  fi
+
+  response_file="$(mktemp "${TMPDIR:-/tmp}/unc-codex-endpoint.XXXXXX")"
+  register_temp_file "$response_file"
+  payload="$(printf '{"model":"%s","input":"Reply exactly: UNC Codex setup OK","store":false,"background":false}' "$MODEL")"
+
+  echo "Testing the UNC Responses endpoint with $MODEL..."
+  if ! http_status="$(curl \
+    --silent \
+    --show-error \
+    --max-time 30 \
+    --output "$response_file" \
+    --write-out '%{http_code}' \
+    --request POST \
+    --header "Authorization: Bearer $api_key" \
+    --header 'Content-Type: application/json' \
+    --data "$payload" \
+    "$BASE_URL/responses")"; then
+    echo "Connection test failed before an HTTP response was received."
+    rm -f "$response_file"
+    return 1
+  fi
+
+  if [[ "$http_status" =~ ^2[0-9][0-9]$ ]] &&
+     grep -Fq 'UNC Codex setup OK' "$response_file"; then
+    echo "Connection test succeeded (HTTP $http_status)."
+    rm -f "$response_file"
+    return 0
+  fi
+
+  case "$http_status" in
+    401|403) echo "Connection test failed: authentication was rejected (HTTP $http_status)." ;;
+    404) echo "Connection test failed: the endpoint or model was not found (HTTP 404)." ;;
+    429) echo "Connection test failed: the endpoint rate limit was reached (HTTP 429)." ;;
+    5??) echo "Connection test failed: the UNC endpoint returned a server error (HTTP $http_status)." ;;
+    2??) echo "Connection test failed: the response did not contain the expected confirmation text." ;;
+    *) echo "Connection test failed with HTTP $http_status." ;;
+  esac
+
+  rm -f "$response_file"
+  return 1
+}
+
 start_codex_if_requested() {
   local codex_path=""
   local status=0
-
-  source_bashrc_for_this_session
 
   if ! command -v codex >/dev/null 2>&1; then
     return 0
@@ -672,6 +859,7 @@ start_codex_if_requested() {
 main() {
   local api_key=""
   local action=""
+  local endpoint_verified=0
 
   echo "AI @ UNC ChatGPT setup for Linux/HPC"
   echo "Installer $INSTALLER_VERSION ($INSTALLER_BUILD_DATE)"
@@ -714,7 +902,6 @@ main() {
   write_bashrc_export "$api_key"
   echo "Saved $ENV_KEY export in:"
   echo "  $HOME/.bashrc"
-  source_bashrc_for_this_session
 
   if [[ "$(basename "${SHELL:-}")" != "bash" ]]; then
     echo "Note: your login shell appears to be $(basename "${SHELL:-unknown}"). This script updates ~/.bashrc only."
@@ -725,8 +912,16 @@ main() {
 
   write_codex_config
 
+  if test_unc_endpoint "$api_key"; then
+    endpoint_verified=1
+  fi
+
   echo
-  echo "Setup complete."
+  if [[ "$endpoint_verified" -eq 1 ]]; then
+    echo "Setup complete and verified."
+  else
+    echo "Configuration was saved, but setup could not be verified."
+  fi
   echo "What happened:"
   echo "  API key export saved in ~/.bashrc"
   echo "  Codex config written under ${CODEX_HOME:-$HOME/.codex}"
@@ -736,6 +931,15 @@ main() {
   else
     echo "  Reasoning effort: model default"
   fi
+  if [[ "$endpoint_verified" -eq 1 ]]; then
+    echo "  Endpoint test: succeeded"
+  else
+    echo "  Endpoint test: failed or unavailable"
+    echo
+    echo "Check the API key, network access, and selected model, then rerun setup."
+    return 1
+  fi
+
   start_codex_if_requested
 
   echo
@@ -743,4 +947,6 @@ main() {
   echo "  source ~/.bashrc"
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

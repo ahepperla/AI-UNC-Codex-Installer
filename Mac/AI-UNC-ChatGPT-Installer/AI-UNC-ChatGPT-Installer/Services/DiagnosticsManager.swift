@@ -108,35 +108,70 @@ final class DiagnosticsManager: @unchecked Sendable {
             failDetail: "Wire API is \(summary.wireAPI ?? "missing"); expected \(recommendedConfigManager.recommended.wireAPI)."
         ))
 
-        let keyExists = keychainManager.apiKeyExists()
-        results.append(result(
-            name: "Keychain key exists",
-            passed: keyExists,
-            passDetail: "Keychain contains service \(KeychainManager.serviceName).",
-            failDetail: "Keychain does not contain service \(KeychainManager.serviceName)."
-        ))
+        switch (summary.usesEnvironmentKey, summary.usesPlaintextBearerToken) {
+        case (true, false):
+            results.append(DiagnosticResult(
+                name: "Authentication mode",
+                severity: .pass,
+                detail: "Config uses \(KeychainManager.serviceName) from the GUI environment."
+            ))
 
-        let launchStatus = await launchAgentManager.status()
-        results.append(result(
-            name: "LaunchAgent plist exists",
-            passed: launchStatus.plistExists,
-            passDetail: launchAgentManager.plistURL.path,
-            failDetail: "LaunchAgent plist is missing at \(launchAgentManager.plistURL.path)."
-        ))
-        results.append(result(
-            name: "LaunchAgent is loaded",
-            passed: launchStatus.loaded,
-            passDetail: "launchctl reports \(launchAgentManager.label) as loaded.",
-            failDetail: "launchctl does not report \(launchAgentManager.label) as loaded."
-        ))
-        results.append(result(
-            name: "GUI environment variable is set",
-            passed: launchStatus.environmentVariableSet,
-            passDetail: "\(KeychainManager.serviceName) is visible through launchctl getenv.",
-            failDetail: "\(KeychainManager.serviceName) is not visible through launchctl getenv."
-        ))
+            let keyExists = keychainManager.apiKeyExists()
+            results.append(result(
+                name: "Keychain key exists",
+                passed: keyExists,
+                passDetail: "Keychain contains service \(KeychainManager.serviceName).",
+                failDetail: "Keychain does not contain service \(KeychainManager.serviceName)."
+            ))
 
-        let apiKey = (try? keychainManager.readAPIKey()) ?? configManager.readPlaintextBearerToken()
+            let launchStatus = await launchAgentManager.status()
+            results.append(result(
+                name: "LaunchAgent plist exists",
+                passed: launchStatus.plistExists,
+                passDetail: launchAgentManager.plistURL.path,
+                failDetail: "LaunchAgent plist is missing at \(launchAgentManager.plistURL.path)."
+            ))
+            results.append(result(
+                name: "LaunchAgent is loaded",
+                passed: launchStatus.loaded,
+                passDetail: "launchctl reports \(launchAgentManager.label) as loaded.",
+                failDetail: "launchctl does not report \(launchAgentManager.label) as loaded."
+            ))
+            results.append(result(
+                name: "GUI environment variable is set",
+                passed: launchStatus.environmentVariableSet,
+                passDetail: "\(KeychainManager.serviceName) is visible through launchctl getenv.",
+                failDetail: "\(KeychainManager.serviceName) is not visible through launchctl getenv."
+            ))
+        case (false, true):
+            results.append(DiagnosticResult(
+                name: "Authentication mode",
+                severity: .warning,
+                detail: "Config uses the plaintext bearer-token fallback. Keychain and LaunchAgent checks do not apply."
+            ))
+        case (false, false):
+            results.append(DiagnosticResult(
+                name: "Authentication mode",
+                severity: .fail,
+                detail: "Config does not contain environment-key or plaintext bearer-token authentication."
+            ))
+        case (true, true):
+            results.append(DiagnosticResult(
+                name: "Authentication mode",
+                severity: .fail,
+                detail: "Config contains both environment-key and plaintext bearer-token authentication."
+            ))
+        }
+
+        let apiKey: String?
+        switch (summary.usesEnvironmentKey, summary.usesPlaintextBearerToken) {
+        case (true, false):
+            apiKey = try? keychainManager.readAPIKey()
+        case (false, true):
+            apiKey = configManager.readPlaintextBearerToken()
+        case (false, false), (true, true):
+            apiKey = nil
+        }
         let endpointResult = await endpointTester.test(apiKey: apiKey, model: summary.model ?? recommendedConfigManager.recommended.recommendedModel)
         results.append(DiagnosticResult(
             name: "Endpoint reachable",
