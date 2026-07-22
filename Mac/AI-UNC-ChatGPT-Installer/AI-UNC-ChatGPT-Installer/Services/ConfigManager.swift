@@ -277,20 +277,43 @@ final class ConfigManager: @unchecked Sendable {
             throw ConfigManagerError.invalidModelCatalog
         }
 
-        let approvedIDs = Set(CodexModel.approvedCodexModels.map(\.id))
-        let approvedModelsByID = Dictionary(uniqueKeysWithValues: CodexModel.approvedCodexModels.map { ($0.id, $0) })
+        var currentModelsByID: [String: [String: Any]] = [:]
+        for model in models {
+            guard let slug = model["slug"] as? String, currentModelsByID[slug] == nil else { continue }
+            currentModelsByID[slug] = model
+        }
+        let synthesisTemplate = currentModelsByID["gpt-5.5"] ?? models.first
         var filteredModels: [[String: Any]] = []
 
-        for var model in models {
-            guard let slug = model["slug"] as? String,
-                  approvedIDs.contains(slug),
-                  let approvedModel = approvedModelsByID[slug] else {
+        for approvedModel in CodexModel.approvedCodexModels {
+            let sourceModel: [String: Any]?
+            if let currentModel = currentModelsByID[approvedModel.id] {
+                sourceModel = currentModel
+            } else if approvedModel.id.hasPrefix("gpt-5.6-") {
+                sourceModel = synthesisTemplate
+            } else {
+                sourceModel = nil
+            }
+
+            guard var model = sourceModel else {
                 continue
             }
 
+            model["slug"] = approvedModel.id
             model["display_name"] = approvedModel.label
             model["description"] = approvedModel.isRecommended ? "Recommended UNC model for ChatGPT/Codex work." : "Approved UNC ChatGPT/Codex model."
             model["priority"] = filteredModels.count
+            if let defaultReasoningEffort = approvedModel.defaultReasoningEffort {
+                model["default_reasoning_level"] = defaultReasoningEffort.rawValue
+                model["supported_reasoning_levels"] = approvedModel.catalogReasoningLevels
+            } else {
+                model.removeValue(forKey: "default_reasoning_level")
+                model.removeValue(forKey: "supported_reasoning_levels")
+            }
+            if currentModelsByID[approvedModel.id] == nil {
+                model.removeValue(forKey: "availability_nux")
+                model.removeValue(forKey: "upgrade")
+            }
             filteredModels.append(model)
         }
 

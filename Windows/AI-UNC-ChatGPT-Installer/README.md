@@ -20,10 +20,12 @@ Most users should only need the recommended setup button. Troubleshooting and re
 - Uses `Documents\Codex` when it already exists, otherwise `Documents\ChatGPT`; these are parent folders, not automatic ChatGPT Desktop projects.
 - Removes the old empty `Documents\Codex\ChatGPT` project folder if a previous installer run created it and it has no files.
 - Lets advanced users choose a different project parent folder.
-- Defaults to `gpt-5.5` with `medium` reasoning.
+- Defaults to `gpt-5.6-sol` with `medium` reasoning, the standard/default Codex effort.
+- Offers `low`, `medium`, `high`, `xhigh`, and `max` reasoning for the approved `gpt-5.6` models.
 - Offers only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
 - Omits `model_reasoning_effort` for alternate models unless their supported values are known.
 - When Codex CLI is available, writes `<Codex home>\unc\model-catalog.json` by filtering Codex's current model catalog and points `model_catalog_json` at it so Codex shows only approved UNC models.
+- Adds approved `gpt-5.6` entries to the filtered catalog when the local Codex catalog has not caught up yet.
 - Writes and tests the UNC config before offering ChatGPT Desktop or Codex CLI install/open actions.
 - Backs up the existing `<Codex home>\config.toml`.
 - Saves `UNC_AZURE_API_KEY` as a user environment variable.

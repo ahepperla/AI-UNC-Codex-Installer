@@ -6,12 +6,15 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $script:AppName = 'AI @ UNC ChatGPT Installer'
-$script:InstallerVersion = '2026.07.12'
-$script:InstallerBuildDate = '2026-07-12'
+$script:InstallerVersion = '2026.07.22'
+$script:InstallerBuildDate = '2026-07-22'
 $script:EnvKey = 'UNC_AZURE_API_KEY'
-$script:DefaultModel = 'gpt-5.5'
+$script:DefaultModel = 'gpt-5.6-sol'
 $script:ModelOptions = @(
-    [pscustomobject]@{ Deployment = 'gpt-5.5'; Label = 'gpt-5.5'; Reasoning = @('minimal', 'low', 'medium', 'high', 'xhigh'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.6-sol'; Label = 'gpt-5.6-sol'; Reasoning = @('low', 'medium', 'high', 'xhigh', 'max'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.6-terra'; Label = 'gpt-5.6-terra'; Reasoning = @('low', 'medium', 'high', 'xhigh', 'max'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.6-luna'; Label = 'gpt-5.6-luna'; Reasoning = @('low', 'medium', 'high', 'xhigh', 'max'); DefaultReasoning = 'medium' },
+    [pscustomobject]@{ Deployment = 'gpt-5.5'; Label = 'gpt-5.5'; Reasoning = @('low', 'medium', 'high', 'xhigh'); DefaultReasoning = 'medium' },
     [pscustomobject]@{ Deployment = 'gpt-5.4'; Label = 'gpt-5.4'; Reasoning = @(); DefaultReasoning = $null },
     [pscustomobject]@{ Deployment = 'gpt-5.4-mini'; Label = 'gpt-5.4-mini'; Reasoning = @(); DefaultReasoning = $null },
     [pscustomobject]@{ Deployment = 'gpt-5.4-nano'; Label = 'gpt-5.4-nano'; Reasoning = @(); DefaultReasoning = $null },
@@ -37,7 +40,7 @@ $script:ModelDisplayMap = @{}
 foreach ($modelOption in $script:ModelOptions) {
     $script:ModelDisplayMap[$modelOption.Label] = $modelOption
 }
-$script:ReasoningEffortOptions = @('minimal', 'low', 'medium', 'high', 'xhigh')
+$script:ReasoningEffortOptions = @('low', 'medium', 'high', 'xhigh', 'max')
 $script:DefaultReasoningEffort = 'medium'
 $script:EndpointBaseUrl = 'https://azureaiapi.cloud.unc.edu/openai/v1'
 $script:ResponsesUrl = 'https://azureaiapi.cloud.unc.edu/openai/v1/responses'
@@ -953,6 +956,61 @@ function Set-JsonProperty {
     }
 }
 
+function Remove-JsonProperty {
+    param(
+        [Parameter(Mandatory = $true)][object]$InputObject,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    $property = $InputObject.PSObject.Properties[$Name]
+    if ($property -ne $null) {
+        $InputObject.PSObject.Properties.Remove($Name)
+    }
+}
+
+function Copy-JsonObject {
+    param([Parameter(Mandatory = $true)][object]$InputObject)
+
+    return ($InputObject | ConvertTo-Json -Depth 32 | ConvertFrom-Json)
+}
+
+function Get-ReasoningCatalogDescription {
+    param([Parameter(Mandatory = $true)][string]$Effort)
+
+    switch ($Effort) {
+        'low' { return 'Fast responses with lighter reasoning' }
+        'medium' { return 'Balances speed and reasoning depth for everyday tasks' }
+        'high' { return 'Greater reasoning depth for complex problems' }
+        'xhigh' { return 'Extra high reasoning depth for complex problems' }
+        'max' { return 'Maximum reasoning depth for the hardest problems' }
+        default { return 'Model-supported reasoning depth' }
+    }
+}
+
+function Set-CatalogReasoningProperties {
+    param(
+        [Parameter(Mandatory = $true)][object]$Model,
+        [Parameter(Mandatory = $true)][object]$ModelOption
+    )
+
+    if ($ModelOption.Reasoning.Count -eq 0) {
+        Remove-JsonProperty -InputObject $Model -Name 'default_reasoning_level'
+        Remove-JsonProperty -InputObject $Model -Name 'supported_reasoning_levels'
+        return
+    }
+
+    $levels = @()
+    foreach ($effort in $ModelOption.Reasoning) {
+        $levels += [pscustomobject]@{
+            effort = $effort
+            description = Get-ReasoningCatalogDescription -Effort $effort
+        }
+    }
+
+    Set-JsonProperty -InputObject $Model -Name 'default_reasoning_level' -Value $ModelOption.DefaultReasoning
+    Set-JsonProperty -InputObject $Model -Name 'supported_reasoning_levels' -Value $levels
+}
+
 function Write-ModelCatalog {
     Ensure-Directory -Path $script:SupportDirectory
 
@@ -988,29 +1046,48 @@ function Write-ModelCatalog {
             return $false
         }
 
-        $approvedByDeployment = @{}
-        foreach ($modelOption in $script:ModelOptions) {
-            $approvedByDeployment[$modelOption.Deployment] = $modelOption
-        }
-
-        $filteredModels = @()
-        foreach ($model in @($modelsProperty.Value)) {
+        $currentModelsByDeployment = @{}
+        $modelList = @($modelsProperty.Value)
+        foreach ($model in $modelList) {
             $slugProperty = $model.PSObject.Properties['slug']
             if ($slugProperty -eq $null) {
                 continue
             }
-
             $slug = [string]$slugProperty.Value
-            if (-not $approvedByDeployment.ContainsKey($slug)) {
+            if (-not $currentModelsByDeployment.ContainsKey($slug)) {
+                $currentModelsByDeployment[$slug] = $model
+            }
+        }
+        $synthesisTemplate = $null
+        if ($currentModelsByDeployment.ContainsKey('gpt-5.5')) {
+            $synthesisTemplate = $currentModelsByDeployment['gpt-5.5']
+        } elseif ($modelList.Count -gt 0) {
+            $synthesisTemplate = $modelList[0]
+        }
+        $filteredModels = @()
+
+        foreach ($modelOption in $script:ModelOptions) {
+            $isSynthesized = $false
+            if ($currentModelsByDeployment.ContainsKey($modelOption.Deployment)) {
+                $model = Copy-JsonObject -InputObject $currentModelsByDeployment[$modelOption.Deployment]
+            } elseif ($modelOption.Deployment -like 'gpt-5.6-*' -and $synthesisTemplate -ne $null) {
+                $model = Copy-JsonObject -InputObject $synthesisTemplate
+                $isSynthesized = $true
+            } else {
                 continue
             }
 
-            $modelOption = $approvedByDeployment[$slug]
-            $description = if ($slug -eq $script:DefaultModel) { 'Recommended UNC model for ChatGPT/Codex work.' } else { 'Approved UNC ChatGPT/Codex model.' }
-            $displayName = if ($slug -eq $script:DefaultModel) { $modelOption.Deployment } else { $modelOption.Label }
+            $description = if ($modelOption.Deployment -eq $script:DefaultModel) { 'Recommended UNC model for ChatGPT/Codex work.' } else { 'Approved UNC ChatGPT/Codex model.' }
+            $displayName = $modelOption.Label
+            Set-JsonProperty -InputObject $model -Name 'slug' -Value $modelOption.Deployment
             Set-JsonProperty -InputObject $model -Name 'display_name' -Value $displayName
             Set-JsonProperty -InputObject $model -Name 'description' -Value $description
             Set-JsonProperty -InputObject $model -Name 'priority' -Value $filteredModels.Count
+            Set-CatalogReasoningProperties -Model $model -ModelOption $modelOption
+            if ($isSynthesized) {
+                Remove-JsonProperty -InputObject $model -Name 'availability_nux'
+                Remove-JsonProperty -InputObject $model -Name 'upgrade'
+            }
             $filteredModels += $model
         }
 

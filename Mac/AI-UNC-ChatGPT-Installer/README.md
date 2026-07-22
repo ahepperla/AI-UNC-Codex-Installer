@@ -39,10 +39,12 @@ Setup is not marked complete unless the endpoint test succeeds. ChatGPT Desktop 
 - Stores the API key in macOS Keychain by default.
 - Backs up the existing `<Codex home>/config.toml`.
 - Writes a fresh Codex config with `env_key = "UNC_AZURE_API_KEY"`.
-- Defaults to `gpt-5.5` with `medium` reasoning.
+- Defaults to `gpt-5.6-sol` with `medium` reasoning, the standard/default Codex effort.
+- Offers `low`, `medium`, `high`, `xhigh`, and `max` reasoning for the approved `gpt-5.6` models.
 - Offers only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
 - Omits `model_reasoning_effort` for alternate models unless their supported values are known.
 - When Codex is available, writes `<Codex home>/unc/model-catalog.json` by filtering Codex's current model catalog and points `model_catalog_json` at it so Codex shows only approved UNC models.
+- Adds approved `gpt-5.6` entries to the filtered catalog when the local Codex catalog has not caught up yet.
 - Creates `~/Library/LaunchAgents/edu.unc.codex.env.plist`.
 - Creates `<Codex home>/unc/load_unc_codex_env.sh`.
 - Tests `https://azureaiapi.cloud.unc.edu/openai/v1/responses`.

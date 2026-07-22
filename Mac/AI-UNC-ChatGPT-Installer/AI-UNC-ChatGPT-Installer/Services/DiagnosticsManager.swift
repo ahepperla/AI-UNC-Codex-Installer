@@ -74,11 +74,12 @@ final class DiagnosticsManager: @unchecked Sendable {
         let approvedModel = CodexModel.approvedModel(id: summary.model)
         let reasoningPassed: Bool = {
             if let reasoningEffort = summary.reasoningEffort {
-                guard validReasoningEfforts.contains(reasoningEffort) else { return false }
-                if let approvedModel, approvedModel.supportedReasoningEfforts.isEmpty {
+                guard validReasoningEfforts.contains(reasoningEffort),
+                      let parsedEffort = CodexReasoningEffort(rawValue: reasoningEffort),
+                      let approvedModel else {
                     return false
                 }
-                return true
+                return approvedModel.supportedReasoningEfforts.contains(parsedEffort)
             }
             return approvedModel?.supportsReasoningSelection == false
         }()

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEFAULT_MODEL="gpt-5.5"
-INSTALLER_VERSION="2026.07.12"
-INSTALLER_BUILD_DATE="2026-07-12"
+DEFAULT_MODEL="gpt-5.6-sol"
+INSTALLER_VERSION="2026.07.22"
+INSTALLER_BUILD_DATE="2026-07-22"
 MODEL="$DEFAULT_MODEL"
 REASONING_EFFORT="medium"
 PROVIDER="azure"
@@ -31,6 +31,9 @@ register_temp_file() {
 trap cleanup_temp_files EXIT
 
 CODEX_MODEL_DEPLOYMENTS=(
+  "gpt-5.6-sol"
+  "gpt-5.6-terra"
+  "gpt-5.6-luna"
   "gpt-5.5"
   "gpt-5.4"
   "gpt-5.4-mini"
@@ -54,6 +57,9 @@ CODEX_MODEL_DEPLOYMENTS=(
 )
 
 CODEX_MODEL_LABELS=(
+  "gpt-5.6-sol"
+  "gpt-5.6-terra"
+  "gpt-5.6-luna"
   "gpt-5.5"
   "gpt-5.4"
   "gpt-5.4-mini"
@@ -98,11 +104,11 @@ json_escape() {
 
 reasoning_description() {
   case "$1" in
-    minimal) printf "Fastest responses for very small edits." ;;
     low) printf "Faster responses for straightforward tasks." ;;
-    medium) printf "Balanced default for most UNC Codex work." ;;
+    medium) printf "Standard default for most UNC Codex work." ;;
     high) printf "More careful reasoning for complex changes." ;;
     xhigh) printf "Most thorough reasoning, with slower responses." ;;
+    max) printf "Maximum reasoning for the hardest tasks." ;;
     *) printf "Uses model-supported reasoning." ;;
   esac
 }
@@ -128,7 +134,7 @@ choose_model() {
   local index
 
   echo "Codex model:"
-  echo "  Press Enter for gpt-5.5."
+  echo "  Press Enter for gpt-5.6-sol."
   echo "  Image, embedding, and audio deployments are intentionally not listed."
   echo
 
@@ -159,15 +165,43 @@ choose_model() {
 choose_reasoning_effort() {
   local answer
 
-  if [[ "$MODEL" != "$DEFAULT_MODEL" ]]; then
+  echo "Reasoning effort controls how much time Codex spends thinking."
+
+  if [[ "$MODEL" == gpt-5.6-* ]]; then
+    echo "Options: low, medium, high, xhigh, max"
+    while true; do
+      read -r -p "Use medium reasoning effort? [Y/n or type another option] " answer
+      answer=${answer:-y}
+      case "$answer" in
+        y|Y|yes|YES|Yes)
+          REASONING_EFFORT="medium"
+          return 0
+          ;;
+        n|N|no|NO|No)
+          read -r -p "Choose reasoning effort [low/medium/high/xhigh/max]: " answer
+          ;;
+      esac
+
+      case "$answer" in
+        low|medium|high|xhigh|max)
+          REASONING_EFFORT="$answer"
+          return 0
+          ;;
+        *)
+          echo "Please choose one of: low, medium, high, xhigh, max."
+          ;;
+      esac
+    done
+  fi
+
+  if [[ "$MODEL" != "gpt-5.5" ]]; then
     REASONING_EFFORT=""
     echo "Reasoning effort: model default for $MODEL."
     echo "This script does not write unsupported reasoning options for alternate models."
     return 0
   fi
 
-  echo "Reasoning effort controls how much time Codex spends thinking."
-  echo "Options: minimal, low, medium, high, xhigh"
+  echo "Options: low, medium, high, xhigh"
 
   while true; do
     read -r -p "Use medium reasoning effort? [Y/n or type another option] " answer
@@ -178,17 +212,17 @@ choose_reasoning_effort() {
         return 0
         ;;
       n|N|no|NO|No)
-        read -r -p "Choose reasoning effort [minimal/low/medium/high/xhigh]: " answer
+        read -r -p "Choose reasoning effort [low/medium/high/xhigh]: " answer
         ;;
     esac
 
     case "$answer" in
-      minimal|low|medium|high|xhigh)
+      low|medium|high|xhigh)
         REASONING_EFFORT="$answer"
         return 0
         ;;
       *)
-        echo "Please choose one of: minimal, low, medium, high, xhigh."
+        echo "Please choose one of: low, medium, high, xhigh."
         ;;
     esac
   done
@@ -328,6 +362,19 @@ separator = args.index("--")
 deployments = args[1:separator]
 labels = args[separator + 1:]
 approved_labels = dict(zip(deployments, labels))
+reasoning_by_slug = {
+    "gpt-5.6-sol": ["low", "medium", "high", "xhigh", "max"],
+    "gpt-5.6-terra": ["low", "medium", "high", "xhigh", "max"],
+    "gpt-5.6-luna": ["low", "medium", "high", "xhigh", "max"],
+    "gpt-5.5": ["low", "medium", "high", "xhigh"],
+}
+reasoning_descriptions = {
+    "low": "Fast responses with lighter reasoning",
+    "medium": "Balances speed and reasoning depth for everyday tasks",
+    "high": "Greater reasoning depth for complex problems",
+    "xhigh": "Extra high reasoning depth for complex problems",
+    "max": "Maximum reasoning depth for the hardest problems",
+}
 
 with open(raw_catalog_path, "r", encoding="utf-8") as catalog_file:
     catalog = json.load(catalog_file)
@@ -335,22 +382,48 @@ models = catalog.get("models")
 if not isinstance(models, list):
     raise SystemExit("Codex catalog did not include a models list.")
 
-filtered_models = []
+current_models_by_slug = {}
 for model in models:
     if not isinstance(model, dict):
         continue
     slug = model.get("slug")
-    if slug not in approved_labels:
+    if isinstance(slug, str) and slug not in current_models_by_slug:
+        current_models_by_slug[slug] = model
+
+synthesis_template = current_models_by_slug.get("gpt-5.5") or (models[0] if models else None)
+filtered_models = []
+for slug in deployments:
+    is_synthesized = False
+    if slug in current_models_by_slug:
+        model = current_models_by_slug[slug]
+    elif slug.startswith("gpt-5.6-") and isinstance(synthesis_template, dict):
+        model = synthesis_template
+        is_synthesized = True
+    else:
         continue
 
     entry = dict(model)
-    entry["display_name"] = slug if slug == default_model else approved_labels[slug]
+    entry["slug"] = slug
+    entry["display_name"] = approved_labels[slug]
     entry["description"] = (
         "Recommended UNC model for ChatGPT/Codex work."
         if slug == default_model
         else "Approved UNC ChatGPT/Codex model."
     )
     entry["priority"] = len(filtered_models)
+    reasoning_levels = reasoning_by_slug.get(slug, [])
+    if reasoning_levels:
+        entry["default_reasoning_level"] = "medium"
+        entry["supported_reasoning_levels"] = [
+            {"effort": effort, "description": reasoning_descriptions[effort]}
+            for effort in reasoning_levels
+        ]
+    else:
+        entry.pop("default_reasoning_level", None)
+        entry.pop("supported_reasoning_levels", None)
+    if is_synthesized:
+        entry.pop("availability_nux", None)
+        entry.pop("upgrade", None)
     filtered_models.append(entry)
 
 if not filtered_models:

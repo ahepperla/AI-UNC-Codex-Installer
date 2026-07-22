@@ -56,10 +56,12 @@ The script prompts for the UNC Azure OpenAI API key, lets the user keep the reco
 - Use `Documents/Codex` when it already exists, otherwise `Documents/ChatGPT`; these are parent folders, not automatic ChatGPT Desktop projects.
 - Remove the old empty `Documents/Codex/ChatGPT` project folder if a previous installer run created it and it has no files.
 - Let advanced users choose a different project parent folder.
-- Default to `gpt-5.5` with `medium` reasoning.
+- Default to `gpt-5.6-sol` with `medium` reasoning, the standard/default Codex effort.
+- Offer `low`, `medium`, `high`, `xhigh`, and `max` reasoning for the approved `gpt-5.6` models.
 - Offer only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
 - Omit `model_reasoning_effort` for alternate models unless their supported values are known.
 - Keep one active approved model in `config.toml` and, when Codex is available, write a filtered `model_catalog_json` generated from Codex's current model catalog so Codex does not show unsupported OpenAI models.
+- Add approved `gpt-5.6` entries to the filtered catalog when the local Codex catalog has not caught up yet.
 - Back up an existing `config.toml` before writing the UNC config.
 - Test the UNC Responses API endpoint before marking setup complete.
 - Offer ChatGPT Desktop and Codex CLI install or launch actions only after configuration succeeds.

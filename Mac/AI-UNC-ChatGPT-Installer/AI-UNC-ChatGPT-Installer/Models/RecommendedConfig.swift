@@ -1,18 +1,16 @@
 import Foundation
 
 enum CodexReasoningEffort: String, CaseIterable, Identifiable, Codable, Sendable {
-    case minimal
     case low
     case medium
     case high
     case xhigh
+    case max
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .minimal:
-            return "Minimal"
         case .low:
             return "Low"
         case .medium:
@@ -21,21 +19,38 @@ enum CodexReasoningEffort: String, CaseIterable, Identifiable, Codable, Sendable
             return "High"
         case .xhigh:
             return "Extra High"
+        case .max:
+            return "Max"
         }
     }
 
     var helpText: String {
         switch self {
-        case .minimal:
-            return "Fastest responses for very small edits."
         case .low:
             return "Faster responses for straightforward tasks."
         case .medium:
-            return "Balanced default for most UNC Codex work."
+            return "Standard default for most UNC Codex work."
         case .high:
             return "More careful reasoning for complex changes."
         case .xhigh:
             return "Most thorough reasoning, with slower responses."
+        case .max:
+            return "Maximum reasoning for the hardest tasks."
+        }
+    }
+
+    var catalogDescription: String {
+        switch self {
+        case .low:
+            return "Fast responses with lighter reasoning"
+        case .medium:
+            return "Balances speed and reasoning depth for everyday tasks"
+        case .high:
+            return "Greater reasoning depth for complex problems"
+        case .xhigh:
+            return "Extra high reasoning depth for complex problems"
+        case .max:
+            return "Maximum reasoning depth for the hardest problems"
         }
     }
 }
@@ -57,6 +72,15 @@ struct CodexModel: Identifiable, Hashable, Codable, Sendable {
         !supportedReasoningEfforts.isEmpty
     }
 
+    var catalogReasoningLevels: [[String: String]] {
+        supportedReasoningEfforts.map { effort in
+            [
+                "effort": effort.rawValue,
+                "description": effort.catalogDescription
+            ]
+        }
+    }
+
     var reasoningHelpText: String {
         if supportsReasoningSelection {
             return "Choose how much time Codex spends thinking for this model."
@@ -65,17 +89,41 @@ struct CodexModel: Identifiable, Hashable, Codable, Sendable {
     }
 
     static let recommended = CodexModel(
-        id: "gpt-5.5",
-        label: "gpt-5.5",
+        id: "gpt-5.6-sol",
+        label: "gpt-5.6-sol",
         deploymentLocality: "US Data Zone",
         apiAvailability: "pre-v1, v1",
         isRecommended: true,
-        supportedReasoningEfforts: CodexReasoningEffort.allCases,
+        supportedReasoningEfforts: [.low, .medium, .high, .xhigh, .max],
         defaultReasoningEffort: .medium
     )
 
     static let approvedCodexModels: [CodexModel] = [
         .recommended,
+        CodexModel(
+            id: "gpt-5.6-terra",
+            label: "gpt-5.6-terra",
+            deploymentLocality: "US Data Zone",
+            apiAvailability: "pre-v1, v1",
+            supportedReasoningEfforts: [.low, .medium, .high, .xhigh, .max],
+            defaultReasoningEffort: .medium
+        ),
+        CodexModel(
+            id: "gpt-5.6-luna",
+            label: "gpt-5.6-luna",
+            deploymentLocality: "US Data Zone",
+            apiAvailability: "pre-v1, v1",
+            supportedReasoningEfforts: [.low, .medium, .high, .xhigh, .max],
+            defaultReasoningEffort: .medium
+        ),
+        CodexModel(
+            id: "gpt-5.5",
+            label: "gpt-5.5",
+            deploymentLocality: "US Data Zone",
+            apiAvailability: "pre-v1, v1",
+            supportedReasoningEfforts: [.low, .medium, .high, .xhigh],
+            defaultReasoningEffort: .medium
+        ),
         CodexModel(id: "gpt-5.4", label: "gpt-5.4", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
         CodexModel(id: "gpt-5.4-mini", label: "gpt-5.4-mini", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
         CodexModel(id: "gpt-5.4-nano", label: "gpt-5.4-nano", deploymentLocality: "US Data Zone", apiAvailability: "pre-v1, v1"),
@@ -180,7 +228,7 @@ struct ConfigSummary: Equatable, Sendable {
             } else if approvedModel.supportedReasoningEfforts.isEmpty {
                 mismatches.append("Reasoning effort is set for \(approvedModel.id), which should use the model default.")
             }
-        } else if approvedModel.isRecommended {
+        } else if approvedModel.supportsReasoningSelection {
             mismatches.append("Reasoning effort is missing for \(approvedModel.id).")
         }
         if modelCatalogPath == nil {

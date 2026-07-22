@@ -5,12 +5,14 @@ This is the plain terminal setup path for Linux systems such as an HPC cluster. 
 The script:
 
 - Prompts for the UNC Azure OpenAI API key.
-- Asks which approved Codex model to use. Press Enter for `gpt-5.5`.
-- Uses `medium` reasoning for `gpt-5.5` unless the user picks another value.
-- Uses model-default reasoning for alternate models and leaves `model_reasoning_effort` out of the config.
+- Asks which approved Codex model to use. Press Enter for `gpt-5.6-sol`.
+- Uses `medium` reasoning for `gpt-5.6-sol`, the standard/default Codex effort, unless the user picks another value.
+- Offers `low`, `medium`, `high`, `xhigh`, and `max` reasoning for the approved `gpt-5.6` models.
+- Uses model-default reasoning for other alternate models and leaves `model_reasoning_effort` out of the config unless their supported values are known.
 - Writes `export UNC_AZURE_API_KEY=...` to `~/.bashrc`.
 - Writes the UNC Codex config to `$CODEX_HOME/config.toml`, or `~/.codex/config.toml` when `CODEX_HOME` is not set.
 - When Codex CLI and `python3` are available, writes `<Codex home>/unc/model-catalog.json` by filtering Codex's current model catalog and points `model_catalog_json` at it so Codex shows only approved UNC models.
+- Adds approved `gpt-5.6` entries to the filtered catalog when the local Codex catalog has not caught up yet.
 
 Image, embedding, and audio deployments are intentionally not listed because they are not suitable Codex chat/code deployments.
 
