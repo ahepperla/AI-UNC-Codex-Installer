@@ -42,9 +42,10 @@ Most users should only need the recommended setup button. Troubleshooting and re
 
 After the UNC config succeeds, the installer can help install ChatGPT Desktop or Codex CLI.
 
-- Uses `winget` when available, starting with the Microsoft Store package for ChatGPT Desktop.
+- Uses `winget` with OpenAI's exact Microsoft Store product ID for the new ChatGPT desktop app that includes Codex.
 - Falls back to the official Codex PowerShell installer for CLI setup.
-- Opens the ChatGPT Desktop and Codex CLI download pages if automatic install cannot finish.
+- Does not treat ChatGPT Classic as the Codex-capable desktop app.
+- Opens OpenAI's stable official download page if desktop installation is blocked or cannot finish, with a note that managed computers may require Software Center or IT approval.
 - Warns the user before install starts because it can take several minutes.
 - Shows `Open ChatGPT Desktop` only when the desktop app is detected.
 - Shows `Open Codex CLI` only when the CLI is detected.

@@ -6,8 +6,8 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $script:AppName = 'AI @ UNC ChatGPT Installer'
-$script:InstallerVersion = '2026.07.22.3'
-$script:InstallerBuildDate = '2026-07-22'
+$script:InstallerVersion = '2026.07.27.2'
+$script:InstallerBuildDate = '2026-07-27'
 $script:EnvKey = 'UNC_AZURE_API_KEY'
 $script:DefaultModel = 'gpt-5.6-sol'
 # Reasoning controls the desktop picker. CatalogReasoning preserves every verified catalog level.
@@ -44,6 +44,7 @@ $script:EndpointBaseUrl = 'https://azureaiapi.cloud.unc.edu/openai/v1'
 $script:ResponsesUrl = 'https://azureaiapi.cloud.unc.edu/openai/v1/responses'
 $script:CodexDownloadUrl = 'https://openai.com/codex/'
 $script:ChatGPTDownloadUrl = 'https://chatgpt.com/download/'
+$script:ChatGPTStoreProductId = '9PLM9XGG6VKS'
 $script:StandaloneInstallerUrl = 'https://chatgpt.com/codex/install.ps1'
 $script:CodexHomeEnvironmentVariable = 'CODEX_HOME'
 $script:DefaultCodexHome = Join-Path $env:USERPROFILE '.codex'
@@ -675,7 +676,12 @@ function Get-CodexVersion {
 
 function Get-CodexStartApp {
     try {
-        return Get-StartApps | Where-Object { $_.Name -like '*ChatGPT*' -or $_.Name -like '*Codex*' } | Select-Object -First 1
+        return Get-StartApps |
+            Where-Object {
+                ($_.Name -like '*ChatGPT*' -or $_.Name -like '*Codex*') -and
+                $_.Name -notlike '*Classic*'
+            } |
+            Select-Object -First 1
     } catch {
         return $null
     }
@@ -742,10 +748,10 @@ function Update-CodexActionButtons {
     }
 
     if ($script:InstallButton -ne $null) {
-        if ($Detection -ne $null -and $Detection.Installed) {
-            $script:InstallButton.Text = 'Install/Update Codex'
+        if ($Detection -ne $null -and ($Detection.DesktopAppId -or $Detection.CliPath)) {
+            $script:InstallButton.Text = 'Install/Update Apps'
         } else {
-            $script:InstallButton.Text = 'Install Codex'
+            $script:InstallButton.Text = 'Install Apps'
         }
     }
 }
@@ -831,27 +837,31 @@ function Install-Codex {
     param([bool]$Force = $false)
 
     $detection = Get-CodexDetection
-    if ($detection.Installed -and -not $Force) {
-        Write-Log 'Codex is already installed.'
+    if ($detection.DesktopAppId -and -not $Force) {
+        Write-Log 'ChatGPT Desktop is already installed.'
         return $true
     }
 
-    if ($detection.Installed -and $Force) {
-        Write-Log 'Codex is already installed. Running the installer again because reinstall was requested.'
+    if ($detection.DesktopAppId -and $Force) {
+        Write-Log 'ChatGPT Desktop is already installed. Running the installer again because reinstall was requested.'
+    } elseif ($detection.CliPath) {
+        Write-Log 'Codex CLI is installed, but ChatGPT Desktop is not. Continuing with the desktop app installation.'
     }
 
     $winget = Get-Command 'winget.exe' -ErrorAction SilentlyContinue
     if ($winget -ne $null) {
-        Write-Log 'Attempting ChatGPT Desktop install with winget Microsoft Store product ID.'
+        Write-Log ('Attempting ChatGPT Desktop install with official Microsoft Store product ID {0}.' -f $script:ChatGPTStoreProductId)
         $wingetStoreIdResult = Invoke-ExternalCommand -FilePath $winget.Source -Arguments @(
             'install',
             '--id',
-            '9PLM9XGG6VKS',
-            '-s',
+            $script:ChatGPTStoreProductId,
+            '--source',
             'msstore',
+            '--exact',
             '--accept-package-agreements',
             '--accept-source-agreements'
         )
+        Write-Log ('winget ChatGPT install exit code: {0}' -f $wingetStoreIdResult.ExitCode)
 
         $storePollSeconds = if ($wingetStoreIdResult.Succeeded) { 90 } else { 20 }
         $detection = Wait-CodexDetection -TimeoutSeconds $storePollSeconds -RequireDesktop $true
@@ -863,72 +873,60 @@ function Install-Codex {
             Write-Log 'winget returned success, but ChatGPT Desktop is not registered yet.'
         }
 
-        Write-Log 'winget did not complete the Store product ID install. Trying Microsoft Store app name.'
-        $wingetNameResult = Invoke-ExternalCommand -FilePath $winget.Source -Arguments @(
-            'install',
-            'ChatGPT',
-            '-s',
-            'msstore',
-            '--accept-package-agreements',
-            '--accept-source-agreements'
-        )
-
-        $namePollSeconds = if ($wingetNameResult.Succeeded) { 90 } else { 20 }
-        $detection = Wait-CodexDetection -TimeoutSeconds $namePollSeconds -RequireDesktop $true
-        if ($detection.DesktopAppId) {
-            Write-Log 'ChatGPT Desktop is available after winget app-name install.'
-            return $true
-        }
-        if ($wingetNameResult.Succeeded) {
-            Write-Log 'winget returned success, but ChatGPT Desktop is still not registered.'
-        }
-
-        Write-Log 'winget did not complete ChatGPT Desktop installation.'
+        Write-Log 'winget did not complete the official ChatGPT Desktop package installation.'
     } else {
         Write-Log 'winget was not found. Trying the standalone CLI installer.'
     }
 
-    try {
-        Write-Log 'Attempting standalone Codex CLI installer.'
-        $installerScript = Join-Path ([System.IO.Path]::GetTempPath()) ('codex-install-{0}.ps1' -f [guid]::NewGuid().ToString('N'))
+    $cliInstalled = [bool]$detection.CliPath
+    if ($cliInstalled) {
+        Write-Log 'Codex CLI is already installed; skipping the standalone CLI installer.'
+    } else {
         try {
-            Invoke-WebRequest `
-                -Uri $script:StandaloneInstallerUrl `
-                -UseBasicParsing `
-                -TimeoutSec 60 `
-                -OutFile $installerScript
-            $installerResult = Invoke-ExternalCommand `
-                -FilePath $installerScript `
-                -Environment @{
-                    CODEX_NON_INTERACTIVE = '1'
-                    CI = '1'
+            Write-Log 'Attempting standalone Codex CLI installer.'
+            $installerScript = Join-Path ([System.IO.Path]::GetTempPath()) ('codex-install-{0}.ps1' -f [guid]::NewGuid().ToString('N'))
+            try {
+                Invoke-WebRequest `
+                    -Uri $script:StandaloneInstallerUrl `
+                    -UseBasicParsing `
+                    -TimeoutSec 60 `
+                    -OutFile $installerScript
+                $installerResult = Invoke-ExternalCommand `
+                    -FilePath $installerScript `
+                    -Environment @{
+                        CODEX_NON_INTERACTIVE = '1'
+                        CI = '1'
+                    }
+                if (-not $installerResult.Succeeded) {
+                    Write-Log 'The standalone installer returned a nonzero exit code. Checking whether Codex was installed anyway.'
                 }
-            if (-not $installerResult.Succeeded) {
-                Write-Log 'The standalone installer returned a nonzero exit code. Checking whether Codex was installed anyway.'
+            } finally {
+                if (Test-Path -LiteralPath $installerScript) {
+                    Remove-Item -LiteralPath $installerScript -Force -ErrorAction SilentlyContinue
+                }
             }
-        } finally {
-            if (Test-Path -LiteralPath $installerScript) {
-                Remove-Item -LiteralPath $installerScript -Force -ErrorAction SilentlyContinue
+
+            $localBin = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\OpenAI\Codex\bin'
+            if (Test-Path -LiteralPath $localBin) {
+                $env:Path = "$localBin;$env:Path"
             }
-        }
 
-        $localBin = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\OpenAI\Codex\bin'
-        if (Test-Path -LiteralPath $localBin) {
-            $env:Path = "$localBin;$env:Path"
+            $detection = Wait-CodexDetection -TimeoutSeconds 45
+            if ($detection.CliPath) {
+                $cliInstalled = $true
+                Write-Log 'Codex CLI is available after the standalone installer.'
+            }
+        } catch {
+            Write-Log ('Standalone installer failed: {0}' -f $_.Exception.Message)
         }
-
-        $detection = Wait-CodexDetection -TimeoutSeconds 45
-        if ($detection.Installed) {
-            Write-Log 'Codex installation is available after standalone installer.'
-            return $true
-        }
-    } catch {
-        Write-Log ('Standalone installer failed: {0}' -f $_.Exception.Message)
     }
 
-    Write-Log 'Automatic installation did not finish. Opening ChatGPT download and Codex CLI pages.'
+    Write-Log 'ChatGPT Desktop installation did not finish. Opening the official OpenAI download page.'
     Start-Process $script:ChatGPTDownloadUrl
-    Start-Process $script:CodexDownloadUrl
+    if (-not $cliInstalled) {
+        Write-Log 'Codex CLI was not installed. Opening the official Codex page as a secondary option.'
+        Start-Process $script:CodexDownloadUrl
+    }
     return $false
 }
 
@@ -936,7 +934,7 @@ function Install-CodexWithWarning {
     param([bool]$Force = $false)
 
     $detection = Get-CodexDetection
-    if ($detection.Installed -and -not $Force) {
+    if ($detection.DesktopAppId -and -not $Force) {
         return (Install-Codex)
     }
 
@@ -1558,21 +1556,15 @@ function Uninstall-ChatGPTDesktop {
         $result = Invoke-ExternalCommand -FilePath $winget.Source -Arguments @(
             'uninstall',
             '--id',
-            '9PLM9XGG6VKS',
-            '-s',
+            $script:ChatGPTStoreProductId,
+            '--source',
             'msstore',
+            '--exact',
             '--accept-source-agreements'
         )
 
         if (-not $result.Succeeded) {
-            Write-Log 'Store product ID uninstall did not finish. Trying ChatGPT app name.'
-            $result = Invoke-ExternalCommand -FilePath $winget.Source -Arguments @(
-                'uninstall',
-                'ChatGPT',
-                '-s',
-                'msstore',
-                '--accept-source-agreements'
-            )
+            Write-Log 'The official Store package uninstall did not finish.'
         }
 
         $detection = Wait-ChatGPTDesktopRemoval -TimeoutSeconds 20
@@ -1726,7 +1718,7 @@ function Run-FullSetup {
     Save-SetupReceipt -EndpointSucceeded $endpointSucceeded -Detection $detection
 
     if (-not $installed) {
-        Show-Info -Message 'UNC configuration is complete. Automatic Codex install did not finish, so the official download page was opened.'
+        Show-Info -Message "UNC configuration is complete, but ChatGPT Desktop could not be installed automatically.`r`n`r`nThe official OpenAI download page was opened. On a managed computer, your organization may require Software Center or IT approval."
         return
     }
 
@@ -2041,7 +2033,7 @@ function Build-Gui {
     $detect.TabIndex = 13
     $detect.Add_Click({ Invoke-GuiAction { Show-CodexDetection | Out-Null } })
 
-    $script:InstallButton = New-Button -Text 'Install Codex' -X 142 -Y 88 -Width 128 -Height 28 -Parent $script:AdvancedGroupBox
+    $script:InstallButton = New-Button -Text 'Install Apps' -X 142 -Y 88 -Width 128 -Height 28 -Parent $script:AdvancedGroupBox
     $script:InstallButton.TabIndex = 14
     $script:InstallButton.Add_Click({ Invoke-GuiAction { Install-CodexWithWarning -Force $true | Out-Null; Show-CodexDetection | Out-Null } })
 
