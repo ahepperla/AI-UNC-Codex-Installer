@@ -1,2 +1,0 @@
-/Users/austin/Documents/Codex/install_codex_unc_api/build/windows-native-publish-2026.07.29.2/AI-UNC-ChatGPT-Installer.pdb
-/Users/austin/Documents/Codex/install_codex_unc_api/build/windows-native-publish-2026.07.29.2/AI-UNC-ChatGPT-Installer.exe
