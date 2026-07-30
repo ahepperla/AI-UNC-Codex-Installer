@@ -69,10 +69,9 @@ internal sealed class ProcessRunner
         return result;
     }
 
-    public async Task<int> RunInteractiveAsync(
+    public Process StartInteractive(
         string filePath,
-        IEnumerable<string>? arguments = null,
-        CancellationToken cancellationToken = default)
+        IEnumerable<string>? arguments = null)
     {
         _log.Write($"Running interactive installer: {filePath}");
         var startInfo = new ProcessStartInfo
@@ -87,20 +86,10 @@ internal sealed class ProcessRunner
             startInfo.ArgumentList.Add(argument);
         }
 
-        using var process = Process.Start(startInfo)
+        var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException($"Could not start {filePath}.");
-        try
-        {
-            await process.WaitForExitAsync(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            TryKill(process);
-            throw;
-        }
-
-        _log.Write($"Installer exit code: {process.ExitCode}");
-        return process.ExitCode;
+        _log.Write($"Interactive installer started with process ID {process.Id}.");
+        return process;
     }
 
     public static string? FindOnPath(params string[] names)

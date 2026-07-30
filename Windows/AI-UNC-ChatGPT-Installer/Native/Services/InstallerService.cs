@@ -12,7 +12,7 @@ namespace AIUNCChatGPTInstaller.Services;
 
 internal sealed partial class InstallerService : IDisposable
 {
-    public const string InstallerVersion = "2026.07.29.2";
+    public const string InstallerVersion = "2026.07.29.3";
     public const string InstallerBuildDate = "2026-07-29";
     public const string EndpointBaseUrl = "https://azureaiapi.cloud.unc.edu/openai/v1";
     public const string ResponsesUrl = EndpointBaseUrl + "/responses";
@@ -614,14 +614,19 @@ internal sealed partial class InstallerService : IDisposable
 
             var signer = AuthenticodeVerifier.VerifyMicrosoftSignedFile(installerPath);
             _log.Write($"Verified ChatGPT web installer signer: {signer}");
-            await _processRunner.RunInteractiveAsync(installerPath, cancellationToken: cancellationToken);
+            using var installerProcess = _processRunner.StartInteractive(installerPath);
             if (await WaitForDesktopStateAsync(true, TimeSpan.FromMinutes(2), cancellationToken))
             {
-                _log.Write("The OpenAI.Codex Windows package is installed after the web installer.");
+                _log.Write(
+                    "The OpenAI.Codex Windows package is installed. Continuing without waiting for the Microsoft installer window to close.");
                 return true;
             }
 
-            _log.Write("The web installer finished, but the OpenAI.Codex package was not detected.");
+            var installerState = installerProcess.HasExited
+                ? $"exited with code {installerProcess.ExitCode}"
+                : "was still running";
+            _log.Write(
+                $"The web installer {installerState}, but the OpenAI.Codex package was not detected.");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -942,8 +947,7 @@ internal sealed partial class InstallerService : IDisposable
         var deadline = DateTime.UtcNow + timeout;
         do
         {
-            var detection = await DetectAsync(cancellationToken);
-            if (detection.DesktopInstalled == installed)
+            if (DesktopAppLocator.Detect().PackageInstalled == installed)
             {
                 return true;
             }
@@ -951,7 +955,7 @@ internal sealed partial class InstallerService : IDisposable
             await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
         } while (DateTime.UtcNow < deadline);
 
-        return (await DetectAsync(cancellationToken)).DesktopInstalled == installed;
+        return DesktopAppLocator.Detect().PackageInstalled == installed;
     }
 
     private async Task<bool> WaitForCliAsync(TimeSpan timeout, CancellationToken cancellationToken)
