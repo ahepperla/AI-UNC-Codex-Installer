@@ -33,6 +33,7 @@ internal sealed class MainForm : Form
     private DetectionResult? _detection;
     private bool _busy;
     private bool _closeAfterCancel;
+    private bool _managedResourcesDisposed;
 
     public MainForm(bool runStartupDetection = true, float baseFontSize = 9F)
     {
@@ -64,13 +65,28 @@ internal sealed class MainForm : Form
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && !_managedResourcesDisposed)
         {
-            _lifetime.Cancel();
-            _lifetime.Dispose();
+            _managedResourcesDisposed = true;
+            _log.MessageWritten -= AppendLog;
+            try
+            {
+                if (!_lifetime.IsCancellationRequested)
+                {
+                    _lifetime.Cancel();
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                // A concurrent shutdown path may already have released the token source.
+            }
+            finally
+            {
+                _lifetime.Dispose();
+            }
+
             _toolTip.Dispose();
             _installer.Dispose();
-            _log.MessageWritten -= AppendLog;
         }
         base.Dispose(disposing);
     }

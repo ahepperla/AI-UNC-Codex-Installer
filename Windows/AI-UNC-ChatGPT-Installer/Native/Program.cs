@@ -18,15 +18,14 @@ internal static class Program
                 return RunLayoutAudit(auditArgument["--layout-audit-report=".Length..]);
             }
 
-            using var form = new MainForm();
-            Application.Run(form);
+            Application.Run(new MainForm());
             return 0;
         }
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"AI @ UNC ChatGPT Installer could not start.\r\n\r\n{ex.Message}",
-                "Startup Error",
+                $"AI @ UNC ChatGPT Installer encountered an unexpected error.\r\n\r\n{ex.Message}",
+                "Application Error",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
             return 1;
