@@ -41,8 +41,9 @@ internal sealed class MainForm : Form
 
         Text = "AI @ UNC ChatGPT Installer for Windows";
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(800, 640);
-        ClientSize = new Size(920, 780);
+        MinimumSize = new Size(820, 640);
+        ClientSize = new Size(980, 820);
+        AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = new Font("Segoe UI", 9F);
         BackColor = SystemColors.Window;
@@ -79,12 +80,12 @@ internal sealed class MainForm : Form
             BackColor = SystemColors.Window,
             AutoScroll = true
         };
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 70));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 322));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 0));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         root.Controls.Add(BuildHeader(), 0, 0);
@@ -100,7 +101,6 @@ internal sealed class MainForm : Form
         {
             var visible = !_advancedGroup.Visible;
             _advancedGroup.Visible = visible;
-            root.RowStyles[4].Height = visible ? 184 : 0;
             _advancedToggleButton.Text = visible ? "Hide Advanced Tools" : "Show Advanced Tools";
         };
         root.Controls.Add(_advancedToggleButton, 0, 3);
@@ -137,7 +137,9 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Fill,
             ColumnCount = 2,
             RowCount = 2,
-            Margin = Padding.Empty
+            Margin = Padding.Empty,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86));
@@ -181,7 +183,9 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Fill,
             ColumnCount = 3,
             RowCount = 2,
-            Margin = new Padding(0, 4, 0, 4)
+            Margin = new Padding(0, 6, 0, 8),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
@@ -219,32 +223,37 @@ internal sealed class MainForm : Form
         {
             Text = "Recommended Setup",
             Dock = DockStyle.Fill,
-            Padding = new Padding(14, 10, 14, 12)
+            Padding = new Padding(14, 10, 14, 12),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
 
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 3,
-            RowCount = 7
+            RowCount = 7,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 37));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
 
         var description = new Label
         {
             Text = "Paste the API key, choose a model, and run setup. The app writes and tests the UNC configuration before installing or opening ChatGPT.",
             Dock = DockStyle.Fill,
             ForeColor = SystemColors.GrayText,
-            AutoEllipsis = true
+            AutoEllipsis = false,
+            Padding = new Padding(0, 2, 8, 0)
         };
         layout.Controls.Add(description, 0, 0);
         layout.SetColumnSpan(description, 2);
@@ -271,7 +280,7 @@ internal sealed class MainForm : Form
 
         var primaryButton = CreateButton("Run Recommended Setup", RunRecommendedSetupAsync);
         primaryButton.Dock = DockStyle.Fill;
-        primaryButton.Margin = new Padding(16, 0, 0, 8);
+        primaryButton.Margin = new Padding(16, 2, 0, 8);
         primaryButton.Font = new Font(Font, FontStyle.Bold);
         primaryButton.BackColor = Color.FromArgb(0, 100, 180);
         primaryButton.ForeColor = Color.White;
@@ -282,7 +291,8 @@ internal sealed class MainForm : Form
 
         _openDesktopButton.Text = "Open ChatGPT Desktop";
         StyleActionButton(_openDesktopButton);
-        _openDesktopButton.Dock = DockStyle.Fill;
+        _openDesktopButton.Dock = DockStyle.Top;
+        _openDesktopButton.Height = 34;
         _openDesktopButton.Margin = new Padding(16, 2, 0, 2);
         _openDesktopButton.Click += async (_, _) => await RunActionAsync(async () =>
         {
@@ -294,8 +304,9 @@ internal sealed class MainForm : Form
 
         _openCliButton.Text = "Open Codex CLI";
         StyleActionButton(_openCliButton);
-        _openCliButton.Dock = DockStyle.Fill;
-        _openCliButton.Margin = new Padding(16, 2, 0, 18);
+        _openCliButton.Dock = DockStyle.Top;
+        _openCliButton.Height = 34;
+        _openCliButton.Margin = new Padding(16, 2, 0, 2);
         _openCliButton.Click += async (_, _) => await RunActionAsync(async () =>
         {
             _detection ??= await _installer.DetectAsync(_lifetime.Token);
@@ -344,19 +355,25 @@ internal sealed class MainForm : Form
         _advancedGroup.Text = "Advanced Tools and Recovery";
         _advancedGroup.Dock = DockStyle.Fill;
         _advancedGroup.Padding = new Padding(12, 8, 12, 10);
+        _advancedGroup.AutoSize = true;
+        _advancedGroup.AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 3
+            RowCount = 3,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 86));
 
         _plaintextConfigCheckBox.Text = "Store the API key directly in config.toml instead of using UNC_AZURE_API_KEY";
         _plaintextConfigCheckBox.Dock = DockStyle.Fill;
+        _plaintextConfigCheckBox.AutoSize = false;
+        _plaintextConfigCheckBox.Padding = new Padding(0, 2, 0, 2);
         _toolTip.SetToolTip(
             _plaintextConfigCheckBox,
             "Compatibility fallback only. The config file is restricted to the current Windows user.");
@@ -393,29 +410,35 @@ internal sealed class MainForm : Form
         workspacePanel.Controls.Add(CreateButton("Open", OpenWorkspaceAsync), 4, 0);
         layout.Controls.Add(workspacePanel, 0, 1);
 
-        var commands = new FlowLayoutPanel
+        var commands = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = true,
-            AutoScroll = true,
+            ColumnCount = 5,
+            RowCount = 2,
+            Margin = Padding.Empty,
             Padding = new Padding(0, 4, 0, 0)
         };
-        commands.Controls.Add(CreateButton("Detect", RefreshDetectionAsync));
+        for (var column = 0; column < commands.ColumnCount; column++)
+        {
+            commands.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
+        }
+        commands.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        commands.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+
+        AddAdvancedCommand(commands, CreateButton("Detect", RefreshDetectionAsync), 0);
         _installButton.Text = "Install Apps";
         StyleActionButton(_installButton);
-        _installButton.Size = new Size(112, 30);
         _installButton.Click += async (_, _) => await RunActionAsync(() => InstallAppsAsync(true));
         _actionControls.Add(_installButton);
-        commands.Controls.Add(_installButton);
-        commands.Controls.Add(CreateButton("Write Config", ConfigureOnlyAsync));
-        commands.Controls.Add(CreateButton("Test Connection", TestConnectionAsync, width: 126));
-        commands.Controls.Add(CreateButton("Open Downloads", OpenDownloadsAsync, width: 126));
-        commands.Controls.Add(CreateButton("Support Report", SaveSupportReportAsync, width: 122));
-        commands.Controls.Add(CreateButton("Reset Config", ResetConfigurationAsync));
-        commands.Controls.Add(CreateButton("Uninstall Desktop", UninstallDesktopAsync, width: 130));
-        commands.Controls.Add(CreateButton("Uninstall CLI", UninstallCliAsync));
-        commands.Controls.Add(CreateButton("Uninstall UNC Setup", UninstallAllAsync, width: 150));
+        AddAdvancedCommand(commands, _installButton, 1);
+        AddAdvancedCommand(commands, CreateButton("Write Config", ConfigureOnlyAsync), 2);
+        AddAdvancedCommand(commands, CreateButton("Test Connection", TestConnectionAsync), 3);
+        AddAdvancedCommand(commands, CreateButton("Open Downloads", OpenDownloadsAsync), 4);
+        AddAdvancedCommand(commands, CreateButton("Support Report", SaveSupportReportAsync), 5);
+        AddAdvancedCommand(commands, CreateButton("Reset Config", ResetConfigurationAsync), 6);
+        AddAdvancedCommand(commands, CreateButton("Uninstall Desktop", UninstallDesktopAsync), 7);
+        AddAdvancedCommand(commands, CreateButton("Uninstall CLI", UninstallCliAsync), 8);
+        AddAdvancedCommand(commands, CreateButton("Uninstall UNC Setup", UninstallAllAsync), 9);
         layout.Controls.Add(commands, 0, 2);
 
         _advancedGroup.Controls.Add(layout);
@@ -843,8 +866,20 @@ internal sealed class MainForm : Form
     {
         label.Dock = DockStyle.Fill;
         label.ForeColor = SystemColors.GrayText;
-        label.AutoEllipsis = true;
-        label.Padding = new Padding(0, 4, 8, 0);
+        label.AutoEllipsis = false;
+        label.TextAlign = ContentAlignment.TopLeft;
+        label.Padding = new Padding(0, 6, 10, 2);
+    }
+
+    private static void AddAdvancedCommand(
+        TableLayoutPanel layout,
+        Button button,
+        int index)
+    {
+        button.Dock = DockStyle.Fill;
+        button.Margin = new Padding(4);
+        button.AutoEllipsis = true;
+        layout.Controls.Add(button, index % layout.ColumnCount, index / layout.ColumnCount);
     }
 
     private void SetActionsEnabled(bool enabled)

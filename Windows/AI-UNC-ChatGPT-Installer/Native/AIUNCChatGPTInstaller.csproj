@@ -16,8 +16,8 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <Version>2026.7.29.2</Version>
-    <FileVersion>2026.7.29.2</FileVersion>
+    <Version>2026.7.29.3</Version>
+    <FileVersion>2026.7.29.3</FileVersion>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <Company>University of North Carolina</Company>
     <Product>AI @ UNC ChatGPT Installer</Product>
