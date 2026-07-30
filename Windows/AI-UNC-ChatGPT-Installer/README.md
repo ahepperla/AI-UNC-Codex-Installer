@@ -1,71 +1,76 @@
 # AI @ UNC ChatGPT Installer for Windows 11
 
-This is the Windows version of the UNC ChatGPT setup tool. It is a PowerShell GUI, not a compiled Windows app, and it configures Codex under the hood.
+This is a native Windows application that configures ChatGPT Desktop and Codex CLI for UNC's managed Azure OpenAI endpoint. Users launch one graphical `.exe`; there is no launcher script, extraction step, or console window to keep open. The app is self-contained and does not require a separate .NET installation.
 
 ## How To Run
 
-1. Extract the zip file.
-2. Double-click `Run AI UNC ChatGPT Installer.cmd`.
+1. Download `AI-UNC-ChatGPT-Installer-Windows.exe`.
+2. Double-click the downloaded file.
 3. Paste the UNC Azure OpenAI API key.
-4. Click `Run Recommended Setup`.
+4. Keep the recommended model and reasoning choices unless a different approved model is needed.
+5. Click `Run Recommended Setup`.
 
-Most users should only need the recommended setup button. Troubleshooting and reset tools are under `Show Advanced Tools`.
+The app warns before closing while work is active and waits for cancellation to finish cleanly. Troubleshooting and recovery actions are under `Show Advanced Tools`.
 
 ## What It Does
 
-- Detects Codex CLI and the ChatGPT/Codex Windows app.
-- Respects `CODEX_HOME` when it is set.
-- Uses `%USERPROFILE%\.codex` when `CODEX_HOME` is not set.
-- Sets `Documents\ChatGPT` as the default project parent path for new installs without creating a ChatGPT Desktop project.
-- Uses `Documents\Codex` when it already exists, otherwise `Documents\ChatGPT`; these are parent folders, not automatic ChatGPT Desktop projects.
-- Removes the old empty `Documents\Codex\ChatGPT` project folder if a previous installer run created it and it has no files.
-- Lets advanced users choose a different project parent folder.
-- Defaults to `gpt-5.6-sol` with `medium` reasoning, the standard/default Codex effort.
-- Shows a short, task-oriented description for every model and reasoning choice.
-- Offers `low`, `medium`, `high`, `xhigh`, and `ultra` for `gpt-5.6-sol` and `gpt-5.6-terra`; offers `low` through `xhigh` for `gpt-5.6-luna` and the other currently verified reasoning models.
-- Keeps `max` out of the installer because ChatGPT Desktop hides it by default, while preserving `max` in the generated catalog where the model supports it.
-- Offers only approved Codex text/code deployments. Image, embedding, and audio deployments are intentionally excluded.
-- Omits `model_reasoning_effort` for alternate models unless their supported values are known.
-- When Codex CLI is available, writes `<Codex home>\unc\model-catalog.json` by filtering Codex's current model catalog and points `model_catalog_json` at it so Codex shows only approved UNC models.
-- Preserves each current Codex catalog entry's supported reasoning levels, using installer fallbacks only for synthesized `gpt-5.6` entries.
-- Adds approved `gpt-5.6` entries to the filtered catalog when the local Codex catalog has not caught up yet.
-- Writes and tests the UNC config before offering ChatGPT Desktop or Codex CLI install/open actions.
-- Backs up the existing `<Codex home>\config.toml`.
-- Saves `UNC_AZURE_API_KEY` as a user environment variable.
-- Clears the visible API key box after config is written.
-- Tests the UNC Azure OpenAI Responses API endpoint.
-- Saves logs and receipts under `<Codex home>\unc`.
-- Records the installer version/build date in receipts and support reports.
-- Can save a support report and reset the changes it made.
+- Detects the current `OpenAI.Codex` Windows package and the standalone Codex CLI.
+- Respects `CODEX_HOME` when set; otherwise uses `%USERPROFILE%\.codex`.
+- Uses `Documents\Codex` as the project parent when that existing folder is present; otherwise uses `Documents\ChatGPT`.
+- Does not pass the project parent to ChatGPT Desktop, so setup does not create an empty project in the sidebar.
+- Defaults to `gpt-5.6-sol` with `medium` reasoning.
+- Shows novice-oriented descriptions for every approved model and reasoning choice.
+- Writes an approved-model catalog when a compatible Codex CLI is available.
+- Refreshes the config and model catalog after installing the CLI on a new computer.
+- Backs up the current `config.toml` before the first setup write.
+- Stores `UNC_AZURE_API_KEY` for the current Windows user in the normal setup path.
+- Offers a restricted-per-user plaintext config fallback only for compatibility cases.
+- Tests the UNC Responses API before reporting a verified setup.
+- Saves logs, a setup receipt, and optional support reports without including the API key.
+- Can reset installer-created configuration or uninstall the desktop app, CLI, and UNC setup.
 
-## ChatGPT And Codex Installation
+## Application Installation
 
-After the UNC config succeeds, the installer can help install ChatGPT Desktop or Codex CLI.
+Desktop and CLI installation are independent. A successful ChatGPT Desktop install does not prevent the app from installing a missing CLI.
 
-- Uses `winget` with OpenAI's exact Microsoft Store product ID for the new ChatGPT desktop app that includes Codex.
-- Falls back to the official Codex PowerShell installer for CLI setup.
-- Does not treat ChatGPT Classic as the Codex-capable desktop app.
-- Opens OpenAI's stable official download page if desktop installation is blocked or cannot finish, with a note that managed computers may require Software Center or IT approval.
-- Warns the user before install starts because it can take several minutes.
-- Shows `Open ChatGPT Desktop` only when the desktop app is detected.
-- Shows `Open Codex CLI` only when the CLI is detected.
-- Opens ChatGPT Desktop by default after setup without sending a workspace path, so a new install does not get an automatic project entry.
+- Downloads OpenAI's official Microsoft web installer first.
+- Validates the web installer's Authenticode trust and Microsoft signer before running it.
+- Falls back to `winget` with the exact Microsoft Store product ID `9PLM9XGG6VKS`.
+- Uses OpenAI's official Codex PowerShell installer as a hidden subprocess only when the standalone CLI is missing.
+- Opens the stable official OpenAI download pages if automatic installation is blocked.
+- Detects only the `OpenAI.Codex` package, not ChatGPT Classic or unrelated Start menu entries.
+
+The main installer is a native GUI application. PowerShell is not used for its interface, configuration logic, endpoint testing, detection, logging, or desktop-app installation.
+
+## Security
+
+The installer does not provide UNC AI access by itself. It requires a valid UNC Azure OpenAI API key issued through UNC's existing authorization process, and the resulting ChatGPT/Codex configuration is not functional without that credential.
+
+The app runs as the current user and does not request administrator access. It writes only the current user's Codex configuration and support files, stores the normal credential in that user's environment, verifies the downloaded Microsoft desktop installer before execution, and avoids placing the key in logs, reports, or process command lines. The tool automates steps a user could perform manually; it does not add a new service, background agent, or access path.
+
+Internal production distribution should Authenticode-sign the final `.exe` with UNC's Windows code-signing certificate. Unsigned test builds may trigger a Microsoft Defender SmartScreen warning.
 
 ## Files And Settings
 
-- Codex home: `CODEX_HOME` when set, otherwise `%USERPROFILE%\.codex`
+- Codex home: `CODEX_HOME`, otherwise `%USERPROFILE%\.codex`
 - Config: `<Codex home>\config.toml`
 - Support directory: `<Codex home>\unc`
 - Workspace setting: `<Codex home>\unc\workspace-path.txt`
-- Default parent folder: `Documents\ChatGPT`, or `Documents\Codex` when `Documents\Codex` already exists
-- API key: current user's `UNC_AZURE_API_KEY` environment variable
+- Default project parent: `Documents\ChatGPT`, or existing `Documents\Codex`
+- Credential: current user's `UNC_AZURE_API_KEY`
 
-Existing Codex config files are copied to `config.toml.backup.<timestamp>` before this tool writes a new one.
+## Build
 
-## Notes
+The source is in `Native`. Build the self-contained x64 executable with:
 
-- The GUI is plain on purpose. It is meant to be easy to inspect and rerun.
-- Users may need to open a new Terminal after setup so Windows picks up the updated environment variable.
-- If install fails, use the log text in the app or save a support report from Advanced Tools.
-- Reset removes installer-created environment/config changes but does not delete project parent folders or user files.
-- Advanced Tools includes uninstall actions for ChatGPT Desktop, Codex CLI, and all UNC-specific setup. Uninstall UNC Setup restores or removes the active Codex config and removes installer support files, but leaves project parent folders and user files alone.
+```powershell
+dotnet publish .\Native\AIUNCChatGPTInstaller.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+```
+
+The published application is:
+
+```text
+Native\bin\Release\net10.0-windows10.0.17763.0\win-x64\publish\AI-UNC-ChatGPT-Installer.exe
+```
+
+The x64 build runs on standard Windows 11 x64 computers and under x64 emulation on Windows 11 ARM64. A native ARM64 build can be produced by changing the runtime to `win-arm64`.
