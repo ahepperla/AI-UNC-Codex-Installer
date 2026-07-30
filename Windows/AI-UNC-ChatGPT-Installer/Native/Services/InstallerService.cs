@@ -12,7 +12,7 @@ namespace AIUNCChatGPTInstaller.Services;
 
 internal sealed partial class InstallerService : IDisposable
 {
-    public const string InstallerVersion = "2026.07.29.3";
+    public const string InstallerVersion = "2026.07.29.4";
     public const string InstallerBuildDate = "2026-07-29";
     public const string EndpointBaseUrl = "https://azureaiapi.cloud.unc.edu/openai/v1";
     public const string ResponsesUrl = EndpointBaseUrl + "/responses";
