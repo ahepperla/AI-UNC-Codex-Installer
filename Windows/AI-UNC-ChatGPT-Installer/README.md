@@ -10,7 +10,7 @@ This is a native Windows application that configures ChatGPT Desktop and Codex C
 4. Keep the recommended model and reasoning choices unless a different approved model is needed.
 5. Click `Run Recommended Setup`.
 
-The app warns before closing while work is active and waits for cancellation to finish cleanly. Troubleshooting and recovery actions are under `Show Advanced Tools`.
+The app warns before closing while work is active and waits for cancellation to finish cleanly. Troubleshooting and recovery actions are on the `Advanced Tools` tab.
 
 ## What It Does
 
