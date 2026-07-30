@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dgSpecHash": "2IBPM9dWen8=",
+  "success": true,
+  "projectFilePath": "/Users/austin/Documents/Codex/install_codex_unc_api/Windows/AI-UNC-ChatGPT-Installer/Native/AIUNCChatGPTInstaller.csproj",
+  "expectedPackageFiles": [
+    "/Users/austin/.nuget/packages/microsoft.net.illink.tasks/10.0.9/microsoft.net.illink.tasks.10.0.9.nupkg.sha512",
+    "/Users/austin/.nuget/packages/microsoft.netcore.app.runtime.win-x64/10.0.9/microsoft.netcore.app.runtime.win-x64.10.0.9.nupkg.sha512",
+    "/Users/austin/.nuget/packages/microsoft.windowsdesktop.app.ref/10.0.9/microsoft.windowsdesktop.app.ref.10.0.9.nupkg.sha512",
+    "/Users/austin/.nuget/packages/microsoft.windowsdesktop.app.runtime.win-x64/10.0.9/microsoft.windowsdesktop.app.runtime.win-x64.10.0.9.nupkg.sha512",
+    "/Users/austin/.nuget/packages/microsoft.aspnetcore.app.runtime.win-x64/10.0.9/microsoft.aspnetcore.app.runtime.win-x64.10.0.9.nupkg.sha512",
+    "/Users/austin/.nuget/packages/microsoft.netcore.app.host.win-x64/10.0.9/microsoft.netcore.app.host.win-x64.10.0.9.nupkg.sha512",
+    "/Users/austin/.nuget/packages/microsoft.windows.sdk.net.ref/10.0.17763.57/microsoft.windows.sdk.net.ref.10.0.17763.57.nupkg.sha512"
+  ],
+  "logs": []
+}
