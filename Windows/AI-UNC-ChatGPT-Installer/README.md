@@ -12,6 +12,8 @@ This is a native Windows application that configures ChatGPT Desktop and Codex C
 
 The app warns before closing while work is active and waits for cancellation to finish cleanly. Troubleshooting and recovery actions are on the `Advanced Tools` tab.
 
+The interface measures button captions and text using the active Windows font after DPI scaling. A built-in layout audit checks both tabs at startup and records any undersized text control in the setup log.
+
 ## What It Does
 
 - Detects the current `OpenAI.Codex` Windows package and the standalone Codex CLI.
@@ -72,5 +74,13 @@ The published application is:
 ```text
 Native\bin\Release\net10.0-windows10.0.17763.0\win-x64\publish\AI-UNC-ChatGPT-Installer.exe
 ```
+
+For a Windows layout-only verification across simulated 100%, 125%, 150%, 175%, and 200% text sizes:
+
+```powershell
+.\AI-UNC-ChatGPT-Installer.exe --layout-audit-report="$PWD\windows-layout-audit.txt"
+```
+
+The command exits with code `0` only when all measured controls pass.
 
 The x64 build runs on standard Windows 11 x64 computers and under x64 emulation on Windows 11 ARM64. A native ARM64 build can be produced by changing the runtime to `win-arm64`.
