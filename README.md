@@ -15,15 +15,17 @@ Mac/
 Windows/
   AI-UNC-ChatGPT-Installer/
     README.md
-    AI-UNC-ChatGPT-Installer.ps1
-    Run AI UNC ChatGPT Installer.cmd
+    Native/
+      AIUNCChatGPTInstaller.csproj
+      MainForm.cs
+      Services/
 Linux/
   AI-UNC-ChatGPT-Installer/
     README.md
     setup-codex-unc-cli.sh
 ```
 
-The platform folders use the same `AI-UNC-ChatGPT-Installer` naming scheme. The Mac app is a native SwiftUI project, the Windows installer is a PowerShell GUI, and the Linux version is a plain Bash script for terminal-only environments.
+The platform folders use the same `AI-UNC-ChatGPT-Installer` naming scheme. The Mac app is a native SwiftUI project, the Windows installer is a native C# WinForms application, and the Linux version is a plain Bash script for terminal-only environments.
 
 ## Quick Start
 
@@ -35,7 +37,7 @@ The Mac release is for Apple Silicon Macs. Developers who want to build from sou
 
 ### Windows
 
-Download `AI-UNC-ChatGPT-Installer-Windows.zip` from Releases. Unzip it, double-click `Run AI UNC ChatGPT Installer.cmd`, paste the UNC Azure OpenAI API key, and click `Run Recommended Setup`.
+Download `AI-UNC-ChatGPT-Installer-Windows.exe` from Releases, double-click it, paste the UNC Azure OpenAI API key, and click `Run Recommended Setup`. The self-contained GUI does not require extraction, a console window, or a separate .NET installation.
 
 ### Linux/HPC
 
@@ -91,6 +93,7 @@ Current local package names:
 
 ```text
 AI-UNC-ChatGPT-Installer-AppleSilicon.zip
+AI-UNC-ChatGPT-Installer-Windows.exe
 AI-UNC-ChatGPT-Installer-Windows.zip
 AI-UNC-ChatGPT-Installer-Linux-HPC.zip
 ```
