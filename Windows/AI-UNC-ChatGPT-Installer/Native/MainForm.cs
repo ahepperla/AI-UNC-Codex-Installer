@@ -1,4 +1,5 @@
 using System.Drawing;
+using AIUNCChatGPTInstaller.Controls;
 using AIUNCChatGPTInstaller.Models;
 using AIUNCChatGPTInstaller.Services;
 
@@ -15,16 +16,16 @@ internal sealed class MainForm : Form
     private readonly TextBox _apiKeyTextBox = new();
     private readonly ComboBox _modelComboBox = new();
     private readonly ComboBox _reasoningComboBox = new();
-    private readonly Label _modelHelpLabel = new();
-    private readonly Label _reasoningHelpLabel = new();
+    private readonly WrappingLabel _modelHelpLabel = new();
+    private readonly WrappingLabel _reasoningHelpLabel = new();
     private readonly Label _workspaceLabel = new();
     private readonly Label _advancedWorkspaceLabel = new();
     private readonly Label _statusLabel = new();
-    private readonly CheckBox _launchAfterSetupCheckBox = new();
-    private readonly CheckBox _plaintextConfigCheckBox = new();
-    private readonly Button _openDesktopButton = new();
-    private readonly Button _openCliButton = new();
-    private readonly Button _installButton = new();
+    private readonly MeasuredCheckBox _launchAfterSetupCheckBox = new();
+    private readonly MeasuredCheckBox _plaintextConfigCheckBox = new();
+    private readonly MeasuredButton _openDesktopButton = new();
+    private readonly MeasuredButton _openCliButton = new();
+    private readonly MeasuredButton _installButton = new();
     private readonly TabControl _modeTabs = new();
     private readonly RichTextBox _logBox = new();
     private readonly ToolTip _toolTip = new();
@@ -33,7 +34,7 @@ internal sealed class MainForm : Form
     private bool _busy;
     private bool _closeAfterCancel;
 
-    public MainForm()
+    public MainForm(bool runStartupDetection = true, float baseFontSize = 9F)
     {
         _log = new LogService(_paths);
         _installer = new InstallerService(_paths, _log);
@@ -41,18 +42,23 @@ internal sealed class MainForm : Form
 
         Text = "AI @ UNC ChatGPT Installer for Windows";
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(840, 680);
+        MinimumSize = new Size(900, 760);
         ClientSize = new Size(980, 820);
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
-        Font = new Font("Segoe UI", 9F);
+        Font = new Font("Segoe UI", baseFontSize);
         BackColor = SystemColors.Window;
 
         Controls.Add(BuildRootLayout());
         AcceptButton = _actionControls.OfType<Button>()
             .FirstOrDefault(button => button.Text == "Run Recommended Setup");
 
-        Load += async (_, _) => await RunActionAsync(RefreshDetectionAsync, showErrors: false);
+        if (runStartupDetection)
+        {
+            Load += async (_, _) => await RunActionAsync(RefreshDetectionAsync, showErrors: false);
+        }
+        Shown += (_, _) => BeginInvoke(AuditLayout);
+        DpiChanged += (_, _) => BeginInvoke(AuditLayout);
         FormClosing += OnFormClosing;
     }
 
@@ -76,83 +82,107 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Fill,
             Padding = new Padding(18, 14, 18, 14),
             ColumnCount = 1,
-            RowCount = 5,
+            RowCount = 4,
             BackColor = SystemColors.Window
         };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 348));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 46));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 54));
 
         root.Controls.Add(BuildHeader(), 0, 0);
         root.Controls.Add(BuildApiKeyRow(), 0, 1);
         root.Controls.Add(BuildModeTabs(), 0, 2);
 
+        var logPanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            Margin = new Padding(0, 8, 0, 0)
+        };
+        logPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        logPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
         var logLabel = new Label
         {
             Text = "Setup log",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.BottomLeft,
-            Font = new Font(Font, FontStyle.Bold)
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            Font = new Font(Font, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 5)
         };
-        root.Controls.Add(logLabel, 0, 3);
+        logPanel.Controls.Add(logLabel, 0, 0);
 
         _logBox.Dock = DockStyle.Fill;
         _logBox.ReadOnly = true;
         _logBox.DetectUrls = false;
         _logBox.BackColor = Color.FromArgb(248, 249, 250);
         _logBox.BorderStyle = BorderStyle.FixedSingle;
-        _logBox.Font = new Font("Consolas", 9F);
+        _logBox.Font = new Font("Consolas", Font.SizeInPoints);
         _logBox.WordWrap = false;
-        root.Controls.Add(_logBox, 0, 4);
+        logPanel.Controls.Add(_logBox, 0, 1);
+        root.Controls.Add(logPanel, 0, 3);
 
         return root;
     }
 
     private Control BuildHeader()
     {
-        var panel = new TableLayoutPanel
+        var textPanel = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 2,
+            ColumnCount = 1,
             RowCount = 2,
             Margin = Padding.Empty,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86));
-        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
-        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+        textPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        textPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var title = new Label
         {
             Text = "AI @ UNC ChatGPT Installer",
-            Dock = DockStyle.Fill,
-            Font = new Font("Segoe UI", 15F, FontStyle.Bold),
-            TextAlign = ContentAlignment.MiddleLeft
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            Font = new Font("Segoe UI", Font.SizeInPoints * (15F / 9F), FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 2)
         };
-        panel.Controls.Add(title, 0, 0);
+        textPanel.Controls.Add(title, 0, 0);
 
         var subtitle = new Label
         {
             Text = $"Configure ChatGPT Desktop and Codex CLI for UNC. Version {InstallerService.InstallerVersion}.",
-            Dock = DockStyle.Fill,
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
             ForeColor = SystemColors.GrayText,
-            TextAlign = ContentAlignment.MiddleLeft
+            Margin = Padding.Empty
         };
-        panel.Controls.Add(subtitle, 0, 1);
+        textPanel.Controls.Add(subtitle, 0, 1);
+
+        var panel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
+            Margin = Padding.Empty,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
+        };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        panel.Controls.Add(textPanel, 0, 0);
 
         var closeButton = CreateButton("Close", async () =>
         {
             await Task.CompletedTask;
             Close();
         }, registerAction: false);
-        closeButton.Dock = DockStyle.Top;
-        closeButton.Height = 30;
+        closeButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        closeButton.Margin = new Padding(14, 0, 0, 0);
         panel.Controls.Add(closeButton, 1, 0);
-        panel.SetRowSpan(closeButton, 2);
         return panel;
     }
 
@@ -161,37 +191,39 @@ internal sealed class MainForm : Form
         var panel = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 3,
+            ColumnCount = 2,
             RowCount = 2,
             Margin = new Padding(0, 6, 0, 8),
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 118));
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 8));
-        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
-        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        panel.Controls.Add(new Label
+        var apiKeyLabel = new Label
         {
             Text = "UNC Azure OpenAI API key",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.BottomLeft,
-            Font = new Font(Font, FontStyle.Bold)
-        }, 0, 0);
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            Font = new Font(Font, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 4)
+        };
+        panel.Controls.Add(apiKeyLabel, 0, 0);
+        panel.SetColumnSpan(apiKeyLabel, 2);
 
         _apiKeyTextBox.Dock = DockStyle.Fill;
+        _apiKeyTextBox.Margin = new Padding(0, 0, 10, 0);
         _apiKeyTextBox.UseSystemPasswordChar = true;
         _apiKeyTextBox.AccessibleName = "UNC Azure OpenAI API key";
         panel.Controls.Add(_apiKeyTextBox, 0, 1);
 
-        var showKey = new CheckBox
+        var showKey = new MeasuredCheckBox
         {
             Text = "Show key",
-            AutoSize = true,
             Anchor = AnchorStyles.Left,
-            TextAlign = ContentAlignment.MiddleLeft
+            Margin = Padding.Empty
         };
         showKey.CheckedChanged += (_, _) => _apiKeyTextBox.UseSystemPasswordChar = !showKey.Checked;
         panel.Controls.Add(showKey, 1, 1);
@@ -207,14 +239,16 @@ internal sealed class MainForm : Form
         var setupPage = new TabPage("Setup")
         {
             BackColor = SystemColors.Window,
-            Padding = new Padding(12, 10, 12, 10)
+            Padding = new Padding(12, 10, 12, 10),
+            AutoScroll = true
         };
         setupPage.Controls.Add(BuildRecommendedPanel());
 
         var advancedPage = new TabPage("Advanced Tools")
         {
             BackColor = SystemColors.Window,
-            Padding = new Padding(12, 10, 12, 10)
+            Padding = new Padding(12, 10, 12, 10),
+            AutoScroll = true
         };
         advancedPage.Controls.Add(BuildAdvancedPanel());
 
@@ -228,127 +262,159 @@ internal sealed class MainForm : Form
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 3,
-            RowCount = 7,
-            Margin = Padding.Empty
+            ColumnCount = 1,
+            RowCount = 6,
+            Margin = Padding.Empty,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        var description = new Label
+        var description = new WrappingLabel
         {
             Text = "Paste your API key, choose a model, and run setup. The UNC configuration is tested before ChatGPT opens.",
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.Top,
             ForeColor = SystemColors.GrayText,
-            AutoEllipsis = false,
-            TextAlign = ContentAlignment.TopLeft,
-            Padding = new Padding(0, 4, 10, 0)
+            Margin = new Padding(0, 0, 0, 12)
         };
         layout.Controls.Add(description, 0, 0);
-        layout.SetColumnSpan(description, 2);
-
-        layout.Controls.Add(BoldLabel("Model"), 0, 1);
-        layout.Controls.Add(BoldLabel("Reasoning"), 1, 1);
 
         _modelComboBox.Dock = DockStyle.Fill;
         _modelComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        _modelComboBox.AccessibleName = "Model selection";
+        _modelComboBox.Margin = new Padding(0, 4, 8, 4);
         _modelComboBox.DataSource = ModelCatalog.Options.ToList();
         _modelComboBox.SelectedItem = ModelCatalog.Default;
         _modelComboBox.SelectedIndexChanged += (_, _) => UpdateReasoningOptions();
-        layout.Controls.Add(_modelComboBox, 0, 2);
 
         _reasoningComboBox.Dock = DockStyle.Fill;
         _reasoningComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        _reasoningComboBox.AccessibleName = "Reasoning selection";
+        _reasoningComboBox.Margin = new Padding(0, 4, 8, 4);
         _reasoningComboBox.SelectedIndexChanged += (_, _) => UpdateSelectionHelp();
-        layout.Controls.Add(_reasoningComboBox, 1, 2);
 
         ConfigureHelpLabel(_modelHelpLabel);
         ConfigureHelpLabel(_reasoningHelpLabel);
-        layout.Controls.Add(_modelHelpLabel, 0, 3);
-        layout.Controls.Add(_reasoningHelpLabel, 1, 3);
 
         var primaryButton = CreateButton("Run Recommended Setup", RunRecommendedSetupAsync);
-        primaryButton.Dock = DockStyle.Fill;
-        primaryButton.Margin = new Padding(16, 2, 0, 6);
+        primaryButton.Dock = DockStyle.Top;
+        primaryButton.Margin = new Padding(10, 0, 0, 8);
         primaryButton.Font = new Font(Font, FontStyle.Bold);
         primaryButton.BackColor = Color.FromArgb(0, 100, 180);
         primaryButton.ForeColor = Color.White;
         primaryButton.FlatStyle = FlatStyle.Flat;
         primaryButton.FlatAppearance.BorderSize = 0;
-        layout.Controls.Add(primaryButton, 2, 0);
-        layout.SetRowSpan(primaryButton, 2);
 
         _openDesktopButton.Text = "Open ChatGPT Desktop";
         StyleActionButton(_openDesktopButton);
         _openDesktopButton.Dock = DockStyle.Top;
-        _openDesktopButton.Height = 34;
-        _openDesktopButton.Margin = new Padding(16, 1, 0, 1);
+        _openDesktopButton.Margin = new Padding(10, 0, 0, 8);
         _openDesktopButton.Click += async (_, _) => await RunActionAsync(async () =>
         {
             _detection ??= await _installer.DetectAsync(_lifetime.Token);
             _installer.OpenDesktop(_detection);
         });
         _actionControls.Add(_openDesktopButton);
-        layout.Controls.Add(_openDesktopButton, 2, 2);
 
         _openCliButton.Text = "Open Codex CLI";
         StyleActionButton(_openCliButton);
         _openCliButton.Dock = DockStyle.Top;
-        _openCliButton.Height = 34;
-        _openCliButton.Margin = new Padding(16, 1, 0, 1);
+        _openCliButton.Margin = new Padding(10, 0, 0, 8);
         _openCliButton.Click += async (_, _) => await RunActionAsync(async () =>
         {
             _detection ??= await _installer.DetectAsync(_lifetime.Token);
             _installer.OpenCli(_detection);
         });
         _actionControls.Add(_openCliButton);
-        layout.Controls.Add(_openCliButton, 2, 3);
+
+        var selectors = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            ColumnCount = 3,
+            RowCount = 1,
+            Margin = Padding.Empty,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
+        };
+        selectors.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 37));
+        selectors.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35));
+        selectors.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28));
+        selectors.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        selectors.Controls.Add(
+            BuildSelectorPanel("Model", _modelComboBox, _modelHelpLabel),
+            0,
+            0);
+        selectors.Controls.Add(
+            BuildSelectorPanel("Reasoning", _reasoningComboBox, _reasoningHelpLabel),
+            1,
+            0);
+
+        var actions = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 4,
+            Margin = Padding.Empty,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
+        };
+        actions.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        actions.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        actions.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        actions.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        actions.Controls.Add(primaryButton, 0, 0);
+        actions.Controls.Add(_openDesktopButton, 0, 1);
+        actions.Controls.Add(_openCliButton, 0, 2);
+        selectors.Controls.Add(actions, 2, 0);
+        layout.Controls.Add(selectors, 0, 1);
 
         var workspaceRow = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.Top,
             ColumnCount = 2,
             RowCount = 1,
-            Margin = Padding.Empty
+            Margin = new Padding(0, 8, 0, 0),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
-        workspaceRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
+        workspaceRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         workspaceRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         workspaceRow.Controls.Add(new Label
         {
             Text = "Project parent:",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Font = new Font(Font, FontStyle.Bold)
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            Font = new Font(Font, FontStyle.Bold),
+            Margin = new Padding(0, 4, 12, 4)
         }, 0, 0);
 
+        _workspaceLabel.AutoSize = false;
         _workspaceLabel.Dock = DockStyle.Fill;
         _workspaceLabel.ForeColor = SystemColors.GrayText;
         _workspaceLabel.TextAlign = ContentAlignment.MiddleLeft;
         _workspaceLabel.AutoEllipsis = true;
+        _workspaceLabel.Margin = new Padding(0, 4, 0, 4);
         workspaceRow.Controls.Add(_workspaceLabel, 1, 0);
-        layout.Controls.Add(workspaceRow, 0, 4);
-        layout.SetColumnSpan(workspaceRow, 3);
+        layout.Controls.Add(workspaceRow, 0, 2);
 
         _launchAfterSetupCheckBox.Text = "Open ChatGPT Desktop after setup";
         _launchAfterSetupCheckBox.Checked = true;
-        _launchAfterSetupCheckBox.Dock = DockStyle.Fill;
-        layout.Controls.Add(_launchAfterSetupCheckBox, 0, 5);
-        layout.SetColumnSpan(_launchAfterSetupCheckBox, 2);
+        _launchAfterSetupCheckBox.Anchor = AnchorStyles.Left;
+        _launchAfterSetupCheckBox.Margin = new Padding(0, 6, 0, 6);
+        layout.Controls.Add(_launchAfterSetupCheckBox, 0, 3);
 
-        _statusLabel.Dock = DockStyle.Fill;
+        _statusLabel.AutoSize = true;
+        _statusLabel.Anchor = AnchorStyles.Left;
         _statusLabel.ForeColor = SystemColors.GrayText;
         _statusLabel.Text = "Codex status: checking...";
-        _statusLabel.TextAlign = ContentAlignment.MiddleLeft;
-        layout.Controls.Add(_statusLabel, 0, 6);
-        layout.SetColumnSpan(_statusLabel, 3);
+        _statusLabel.Margin = new Padding(0, 4, 0, 0);
+        layout.Controls.Add(_statusLabel, 0, 4);
 
         UpdateReasoningOptions();
         UpdateWorkspaceDisplay();
@@ -362,17 +428,18 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Fill,
             ColumnCount = 1,
             RowCount = 4,
-            Margin = Padding.Empty
+            Margin = Padding.Empty,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         _plaintextConfigCheckBox.Text = "Store the API key directly in config.toml instead of using UNC_AZURE_API_KEY";
-        _plaintextConfigCheckBox.Dock = DockStyle.Fill;
-        _plaintextConfigCheckBox.AutoSize = false;
-        _plaintextConfigCheckBox.Padding = new Padding(0, 2, 0, 2);
+        _plaintextConfigCheckBox.Anchor = AnchorStyles.Left;
+        _plaintextConfigCheckBox.Margin = new Padding(0, 0, 0, 12);
         _toolTip.SetToolTip(
             _plaintextConfigCheckBox,
             "Compatibility fallback only. The config file is restricted to the current Windows user.");
@@ -380,26 +447,32 @@ internal sealed class MainForm : Form
 
         var workspacePanel = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.Top,
             ColumnCount = 5,
             RowCount = 1,
-            Margin = Padding.Empty
+            Margin = new Padding(0, 0, 0, 14),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
-        workspacePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 106));
+        workspacePanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         workspacePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        workspacePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 94));
-        workspacePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 94));
-        workspacePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 94));
+        workspacePanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        workspacePanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        workspacePanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        workspacePanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         workspacePanel.Controls.Add(new Label
         {
             Text = "Project parent:",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 0, 12, 0)
         }, 0, 0);
+        _advancedWorkspaceLabel.AutoSize = false;
         _advancedWorkspaceLabel.Dock = DockStyle.Fill;
         _advancedWorkspaceLabel.ForeColor = SystemColors.GrayText;
         _advancedWorkspaceLabel.TextAlign = ContentAlignment.MiddleLeft;
         _advancedWorkspaceLabel.AutoEllipsis = true;
+        _advancedWorkspaceLabel.Margin = new Padding(0, 0, 12, 0);
         workspacePanel.Controls.Add(_advancedWorkspaceLabel, 1, 0);
         AddWorkspaceCommand(workspacePanel, CreateButton("Choose", ChooseWorkspaceAsync), 2);
         AddWorkspaceCommand(workspacePanel, CreateButton("Default", ResetWorkspaceAsync), 3);
@@ -412,14 +485,15 @@ internal sealed class MainForm : Form
             ColumnCount = 5,
             RowCount = 2,
             Margin = Padding.Empty,
-            Padding = new Padding(0, 4, 0, 0)
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
         for (var column = 0; column < commands.ColumnCount; column++)
         {
             commands.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
         }
-        commands.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-        commands.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        commands.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        commands.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         AddAdvancedCommand(commands, CreateButton("Detect", RefreshDetectionAsync), 0);
         _installButton.Text = "Install Apps";
@@ -815,18 +889,16 @@ internal sealed class MainForm : Form
         }
     }
 
-    private Button CreateButton(
+    private MeasuredButton CreateButton(
         string text,
         Func<Task> action,
-        int width = 112,
         bool registerAction = true)
     {
-        var button = new Button
+        var button = new MeasuredButton
         {
             Text = text,
-            Size = new Size(width, 30),
-            UseVisualStyleBackColor = true,
-            AutoEllipsis = true,
+            AccessibleName = $"{text} button",
+            AutoEllipsis = false,
             Margin = new Padding(4)
         };
         button.Click += async (_, _) => await RunActionAsync(action);
@@ -840,24 +912,57 @@ internal sealed class MainForm : Form
     private static void StyleActionButton(Button button)
     {
         button.UseVisualStyleBackColor = true;
-        button.AutoEllipsis = true;
+        button.AutoEllipsis = false;
     }
 
-    private static Label BoldLabel(string text) => new()
+    private Label BoldLabel(string text) => new()
     {
         Text = text,
-        Dock = DockStyle.Fill,
-        Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-        TextAlign = ContentAlignment.BottomLeft
+        AutoSize = true,
+        Anchor = AnchorStyles.Left,
+        Font = new Font(Font, FontStyle.Bold),
+        Margin = Padding.Empty
     };
 
-    private static void ConfigureHelpLabel(Label label)
+    private static void ConfigureHelpLabel(WrappingLabel label)
     {
-        label.Dock = DockStyle.Fill;
+        label.Dock = DockStyle.Top;
         label.ForeColor = SystemColors.GrayText;
         label.AutoEllipsis = false;
         label.TextAlign = ContentAlignment.TopLeft;
-        label.Padding = new Padding(0, 6, 10, 2);
+        label.Margin = new Padding(0, 2, 8, 0);
+    }
+
+    private Control BuildSelectorPanel(
+        string heading,
+        ComboBox comboBox,
+        WrappingLabel helpLabel)
+    {
+        var panel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            Margin = Padding.Empty,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
+        };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        panel.Controls.Add(BoldLabel(heading), 0, 0);
+        panel.Controls.Add(comboBox, 0, 1);
+        panel.Controls.Add(helpLabel, 0, 2);
+        panel.SizeChanged += (_, _) =>
+        {
+            var width = panel.ClientSize.Width - helpLabel.Margin.Horizontal;
+            if (width > 0 && helpLabel.MaximumSize.Width != width)
+            {
+                helpLabel.MaximumSize = new Size(width, 0);
+            }
+        };
+        return panel;
     }
 
     private static void AddAdvancedCommand(
@@ -866,8 +971,8 @@ internal sealed class MainForm : Form
         int index)
     {
         button.Dock = DockStyle.Fill;
-        button.Margin = new Padding(4);
-        button.AutoEllipsis = true;
+        button.Margin = new Padding(5);
+        button.AutoEllipsis = false;
         layout.Controls.Add(button, index % layout.ColumnCount, index / layout.ColumnCount);
     }
 
@@ -876,10 +981,50 @@ internal sealed class MainForm : Form
         Button button,
         int column)
     {
-        button.Dock = DockStyle.Fill;
-        button.Margin = new Padding(4, 8, 4, 8);
+        button.Anchor = AnchorStyles.Left;
+        button.Margin = new Padding(5, 0, 0, 0);
         button.AutoEllipsis = false;
         layout.Controls.Add(button, column, 0);
+    }
+
+    internal IReadOnlyList<string> AuditLayout()
+    {
+        if (!IsHandleCreated || IsDisposed)
+        {
+            return [];
+        }
+
+        var selectedIndex = _modeTabs.SelectedIndex;
+        var issues = new HashSet<string>(StringComparer.Ordinal);
+        try
+        {
+            for (var index = 0; index < _modeTabs.TabPages.Count; index++)
+            {
+                _modeTabs.SelectedIndex = index;
+                _modeTabs.TabPages[index].PerformLayout();
+                PerformLayout();
+                issues.UnionWith(UiLayoutAuditor.FindClippedText(this));
+            }
+        }
+        finally
+        {
+            _modeTabs.SelectedIndex = selectedIndex;
+            PerformLayout();
+        }
+
+        if (issues.Count == 0)
+        {
+            _log.Write($"UI layout audit passed at {DeviceDpi} DPI.");
+        }
+        else
+        {
+            foreach (var issue in issues)
+            {
+                _log.Write($"UI LAYOUT WARNING: {issue}");
+            }
+        }
+
+        return issues.ToArray();
     }
 
     private void SetActionsEnabled(bool enabled)
