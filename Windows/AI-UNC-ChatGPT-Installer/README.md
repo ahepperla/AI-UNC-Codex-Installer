@@ -20,7 +20,8 @@ The interface measures button captions and text using the active Windows font af
 - Respects `CODEX_HOME` when set; otherwise uses `%USERPROFILE%\.codex`.
 - Uses `Documents\Codex` as the project parent when that existing folder is present; otherwise uses `Documents\ChatGPT`.
 - Does not pass the project parent to ChatGPT Desktop, so setup does not create an empty project in the sidebar.
-- Defaults to `gpt-5.6-sol` with `medium` reasoning.
+- Defaults to `gpt-6.1-sol` with `medium` reasoning.
+- Offers `none` through `xhigh` for `gpt-6.1-sol` and `low`, `medium`, and `high` for `gpt-6-luna`.
 - Shows novice-oriented descriptions for every approved model and reasoning choice.
 - Writes an approved-model catalog when a compatible Codex CLI is available.
 - Refreshes the config and model catalog after installing the CLI on a new computer.
