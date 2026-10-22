@@ -283,7 +283,6 @@ final class ConfigManager: @unchecked Sendable {
             guard let slug = model["slug"] as? String, currentModelsByID[slug] == nil else { continue }
             currentModelsByID[slug] = model
         }
-        let synthesisTemplate = currentModelsByID["gpt-5.5"] ?? models.first
         var filteredModels: [[String: Any]] = []
 
         for approvedModel in CodexModel.approvedCodexModels {
@@ -292,8 +291,12 @@ final class ConfigManager: @unchecked Sendable {
             if let currentModel = currentModelsByID[approvedModel.id] {
                 sourceModel = currentModel
                 isSynthesized = false
-            } else if approvedModel.id.hasPrefix("gpt-5.6-") {
-                sourceModel = synthesisTemplate
+            } else if let template = catalogTemplate(
+                for: approvedModel.id,
+                currentModelsByID: currentModelsByID,
+                fallback: models.first
+            ) {
+                sourceModel = template
                 isSynthesized = true
             } else {
                 sourceModel = nil
@@ -333,6 +336,25 @@ final class ConfigManager: @unchecked Sendable {
         catalog["models"] = filteredModels
         catalog["source"] = "AI @ UNC ChatGPT Installer filtered from Codex catalog"
         return try JSONSerialization.data(withJSONObject: catalog, options: [.prettyPrinted, .sortedKeys])
+    }
+
+    private static func catalogTemplate(
+        for modelID: String,
+        currentModelsByID: [String: [String: Any]],
+        fallback: [String: Any]?
+    ) -> [String: Any]? {
+        let candidateIDs: [String]
+        switch modelID {
+        case "gpt-6.1-sol":
+            candidateIDs = ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.5"]
+        case "gpt-6-luna":
+            candidateIDs = ["gpt-5.6-luna", "gpt-6-astra", "gpt-5.6-sol"]
+        default:
+            guard modelID.hasPrefix("gpt-5.6-") else { return nil }
+            candidateIDs = ["gpt-5.6-sol", "gpt-5.5"]
+        }
+
+        return candidateIDs.lazy.compactMap { currentModelsByID[$0] }.first ?? fallback
     }
 
     private func modelCatalogExists(in contents: String) -> Bool {

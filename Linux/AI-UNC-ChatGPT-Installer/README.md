@@ -5,16 +5,16 @@ This is the plain terminal setup path for Linux systems such as an HPC cluster. 
 The script:
 
 - Prompts for the UNC Azure OpenAI API key.
-- Asks which approved Codex model to use. Press Enter for `gpt-5.6-sol`.
+- Asks which approved Codex model to use. Press Enter for `gpt-6.1-sol`.
 - Shows a short, task-oriented description for every selected model and reasoning choice.
-- Uses `medium` reasoning for `gpt-5.6-sol`, the standard/default Codex effort, unless the user picks another value.
-- Offers `low` through `ultra` for `gpt-5.6-sol` and `gpt-5.6-terra`, `low` through `max` for `gpt-5.6-luna`, and `low` through `xhigh` for the other currently verified reasoning models.
+- Uses `medium` reasoning for `gpt-6.1-sol`, the standard/default Codex effort, unless the user picks another value.
+- Offers `none` through `xhigh` for `gpt-6.1-sol`, `low` through `high` for `gpt-6-luna`, `low` through `ultra` for `gpt-5.6-sol` and `gpt-5.6-terra`, `low` through `max` for `gpt-5.6-luna`, and `low` through `xhigh` for the other verified earlier reasoning models.
 - Uses model-default reasoning for alternate models whose supported values are not currently verified.
 - Writes `export UNC_AZURE_API_KEY=...` to `~/.bashrc`.
 - Writes the UNC Codex config to `$CODEX_HOME/config.toml`, or `~/.codex/config.toml` when `CODEX_HOME` is not set.
 - When Codex CLI and `python3` are available, writes `<Codex home>/unc/model-catalog.json` by filtering Codex's current model catalog and points `model_catalog_json` at it so Codex shows only approved UNC models.
-- Preserves each current Codex catalog entry's supported reasoning levels, using installer fallbacks only for synthesized `gpt-5.6` entries.
-- Adds approved `gpt-5.6` entries to the filtered catalog when the local Codex catalog has not caught up yet.
+- Preserves each current Codex catalog entry's supported reasoning levels, using installer fallbacks only for synthesized approved entries.
+- Adds approved GPT-6 and `gpt-5.6` entries to the filtered catalog when the local Codex catalog has not caught up yet.
 - Tests the UNC Responses API and only reports setup as verified when the selected model returns the expected confirmation.
 
 Image, embedding, and audio deployments are intentionally not listed because they are not suitable Codex chat/code deployments.

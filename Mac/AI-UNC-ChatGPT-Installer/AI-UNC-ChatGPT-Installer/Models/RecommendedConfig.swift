@@ -1,6 +1,7 @@
 import Foundation
 
 enum CodexReasoningEffort: String, CaseIterable, Identifiable, Codable, Sendable {
+    case none
     case low
     case medium
     case high
@@ -12,6 +13,8 @@ enum CodexReasoningEffort: String, CaseIterable, Identifiable, Codable, Sendable
 
     var label: String {
         switch self {
+        case .none:
+            return "None"
         case .low:
             return "Low"
         case .medium:
@@ -29,6 +32,8 @@ enum CodexReasoningEffort: String, CaseIterable, Identifiable, Codable, Sendable
 
     var helpText: String {
         switch self {
+        case .none:
+            return "Fastest responses for simple, direct tasks without additional reasoning time."
         case .low:
             return "Faster responses for straightforward tasks, with less time spent reasoning."
         case .medium:
@@ -46,6 +51,8 @@ enum CodexReasoningEffort: String, CaseIterable, Identifiable, Codable, Sendable
 
     var catalogDescription: String {
         switch self {
+        case .none:
+            return "Fastest responses without additional reasoning time"
         case .low:
             return "Faster responses with lighter reasoning for straightforward tasks"
         case .medium:
@@ -101,18 +108,36 @@ struct CodexModel: Identifiable, Hashable, Codable, Sendable {
     }
 
     static let recommended = CodexModel(
-        id: "gpt-5.6-sol",
-        label: "gpt-5.6-sol",
+        id: "gpt-6.1-sol",
+        label: "gpt-6.1-sol",
         deploymentLocality: "US Data Zone",
         apiAvailability: "pre-v1, v1",
-        modelHelpText: "Recommended default and latest frontier model for complex coding and long-running work.",
+        modelHelpText: "Recommended default and newest high-capability model for complex coding and long-running work.",
         isRecommended: true,
-        supportedReasoningEfforts: [.low, .medium, .high, .xhigh, .max, .ultra],
+        supportedReasoningEfforts: [.none, .low, .medium, .high, .xhigh],
         defaultReasoningEffort: .medium
     )
 
     static let approvedCodexModels: [CodexModel] = [
         .recommended,
+        CodexModel(
+            id: "gpt-6-luna",
+            label: "gpt-6-luna",
+            deploymentLocality: "US Data Zone",
+            apiAvailability: "pre-v1, v1",
+            modelHelpText: "Fast, efficient model for everyday coding, quick edits, and high-volume work.",
+            supportedReasoningEfforts: [.low, .medium, .high],
+            defaultReasoningEffort: .medium
+        ),
+        CodexModel(
+            id: "gpt-5.6-sol",
+            label: "gpt-5.6-sol",
+            deploymentLocality: "US Data Zone",
+            apiAvailability: "pre-v1, v1",
+            modelHelpText: "Powerful earlier model for complex coding and long-running work.",
+            supportedReasoningEfforts: [.low, .medium, .high, .xhigh, .max, .ultra],
+            defaultReasoningEffort: .medium
+        ),
         CodexModel(
             id: "gpt-5.6-terra",
             label: "gpt-5.6-terra",

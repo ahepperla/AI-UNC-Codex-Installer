@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEFAULT_MODEL="gpt-5.6-sol"
-INSTALLER_VERSION="2026.07.22.3"
-INSTALLER_BUILD_DATE="2026-07-22"
+DEFAULT_MODEL="gpt-6.1-sol"
+INSTALLER_VERSION="2026.10.22.1"
+INSTALLER_BUILD_DATE="2026-10-22"
 MODEL="$DEFAULT_MODEL"
 REASONING_EFFORT="medium"
 PROVIDER="azure"
@@ -44,6 +44,8 @@ unregister_temp_file() {
 trap cleanup_temp_files EXIT
 
 CODEX_MODEL_DEPLOYMENTS=(
+  "gpt-6.1-sol"
+  "gpt-6-luna"
   "gpt-5.6-sol"
   "gpt-5.6-terra"
   "gpt-5.6-luna"
@@ -70,6 +72,8 @@ CODEX_MODEL_DEPLOYMENTS=(
 )
 
 CODEX_MODEL_LABELS=(
+  "gpt-6.1-sol"
+  "gpt-6-luna"
   "gpt-5.6-sol"
   "gpt-5.6-terra"
   "gpt-5.6-luna"
@@ -123,6 +127,7 @@ unique_timestamped_path() {
 
 reasoning_description() {
   case "$1" in
+    none) printf "Fastest responses for simple, direct tasks without additional reasoning time." ;;
     low) printf "Faster responses for straightforward tasks, with less time spent reasoning." ;;
     medium) printf "Recommended balance of speed and careful reasoning for most work." ;;
     high) printf "More careful reasoning for complex code changes and troubleshooting." ;;
@@ -135,7 +140,9 @@ reasoning_description() {
 
 model_description() {
   case "$1" in
-    gpt-5.6-sol) printf "Recommended default and latest frontier model for complex coding and long-running work." ;;
+    gpt-6.1-sol) printf "Recommended default and newest high-capability model for complex coding and long-running work." ;;
+    gpt-6-luna) printf "Fast, efficient model for everyday coding, quick edits, and high-volume work." ;;
+    gpt-5.6-sol) printf "Powerful earlier model for complex coding and long-running work." ;;
     gpt-5.6-terra) printf "Balanced model for everyday coding, debugging, and general work." ;;
     gpt-5.6-luna) printf "Fast, lightweight model for shorter coding tasks and quick edits." ;;
     gpt-5.5) printf "Frontier model for complex coding, research, and real-world work." ;;
@@ -188,7 +195,7 @@ choose_model() {
   local index
 
   echo "Codex model:"
-  echo "  Press Enter for gpt-5.6-sol."
+  echo "  Press Enter for gpt-6.1-sol."
   echo "  Image, embedding, and audio deployments are intentionally not listed."
   echo
 
@@ -227,6 +234,12 @@ choose_reasoning_effort() {
   echo "Reasoning effort controls how much time Codex spends thinking."
 
   case "$MODEL" in
+    gpt-6.1-sol)
+      options=(none low medium high xhigh)
+      ;;
+    gpt-6-luna)
+      options=(low medium high)
+      ;;
     gpt-5.6-sol|gpt-5.6-terra)
       options=(low medium high xhigh max ultra)
       ;;
@@ -466,6 +479,8 @@ deployments = args[1:separator]
 labels = args[separator + 1:]
 approved_labels = dict(zip(deployments, labels))
 reasoning_by_slug = {
+    "gpt-6.1-sol": ["none", "low", "medium", "high", "xhigh"],
+    "gpt-6-luna": ["low", "medium", "high"],
     "gpt-5.6-sol": ["low", "medium", "high", "xhigh", "max", "ultra"],
     "gpt-5.6-terra": ["low", "medium", "high", "xhigh", "max", "ultra"],
     "gpt-5.6-luna": ["low", "medium", "high", "xhigh", "max"],
@@ -476,6 +491,7 @@ reasoning_by_slug = {
     "gpt-5.2": ["low", "medium", "high", "xhigh"],
 }
 reasoning_descriptions = {
+    "none": "Fastest responses without additional reasoning time",
     "low": "Faster responses with lighter reasoning for straightforward tasks",
     "medium": "Recommended balance of speed and reasoning depth for most work",
     "high": "More careful reasoning for complex code changes and troubleshooting",
@@ -484,7 +500,9 @@ reasoning_descriptions = {
     "ultra": "Maximum reasoning with automatic task delegation for large, multi-step work",
 }
 model_descriptions = {
-    "gpt-5.6-sol": "Recommended default and latest frontier model for complex coding and long-running work.",
+    "gpt-6.1-sol": "Recommended default and newest high-capability model for complex coding and long-running work.",
+    "gpt-6-luna": "Fast, efficient model for everyday coding, quick edits, and high-volume work.",
+    "gpt-5.6-sol": "Powerful earlier model for complex coding and long-running work.",
     "gpt-5.6-terra": "Balanced model for everyday coding, debugging, and general work.",
     "gpt-5.6-luna": "Fast, lightweight model for shorter coding tasks and quick edits.",
     "gpt-5.5": "Frontier model for complex coding, research, and real-world work.",
@@ -523,17 +541,32 @@ for model in models:
     if isinstance(slug, str) and slug not in current_models_by_slug:
         current_models_by_slug[slug] = model
 
-synthesis_template = current_models_by_slug.get("gpt-5.5") or (models[0] if models else None)
+def synthesis_template_for(slug):
+    if slug == "gpt-6.1-sol":
+        candidates = ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.5"]
+    elif slug == "gpt-6-luna":
+        candidates = ["gpt-5.6-luna", "gpt-6-astra", "gpt-5.6-sol"]
+    elif slug.startswith("gpt-5.6-"):
+        candidates = ["gpt-5.6-sol", "gpt-5.5"]
+    else:
+        return None
+
+    for candidate in candidates:
+        if candidate in current_models_by_slug:
+            return current_models_by_slug[candidate]
+    return models[0] if models else None
+
 filtered_models = []
 for slug in deployments:
     is_synthesized = False
     if slug in current_models_by_slug:
         model = current_models_by_slug[slug]
-    elif slug.startswith("gpt-5.6-") and isinstance(synthesis_template, dict):
-        model = synthesis_template
-        is_synthesized = True
     else:
-        continue
+        template = synthesis_template_for(slug)
+        if not isinstance(template, dict):
+            continue
+        model = template
+        is_synthesized = True
 
     entry = dict(model)
     entry["slug"] = slug
