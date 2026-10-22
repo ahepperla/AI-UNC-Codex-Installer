@@ -4,11 +4,13 @@ namespace AIUNCChatGPTInstaller;
 
 internal static class ModelCatalog
 {
-    public const string DefaultModel = "gpt-5.6-sol";
+    public const string DefaultModel = "gpt-6.1-sol";
 
     public static IReadOnlyList<ModelOption> Options { get; } =
     [
-        new("gpt-5.6-sol", "gpt-5.6-sol", "Recommended default and latest frontier model for complex coding and long-running work.", ["low", "medium", "high", "xhigh", "ultra"], ["low", "medium", "high", "xhigh", "max", "ultra"], "medium"),
+        new("gpt-6.1-sol", "gpt-6.1-sol", "Recommended default and newest high-capability model for complex coding and long-running work.", ["none", "low", "medium", "high", "xhigh"], ["none", "low", "medium", "high", "xhigh"], "medium"),
+        new("gpt-6-luna", "gpt-6-luna", "Fast, efficient model for everyday coding, quick edits, and high-volume work.", ["low", "medium", "high"], ["low", "medium", "high"], "medium"),
+        new("gpt-5.6-sol", "gpt-5.6-sol", "Powerful earlier model for complex coding and long-running work.", ["low", "medium", "high", "xhigh", "ultra"], ["low", "medium", "high", "xhigh", "max", "ultra"], "medium"),
         new("gpt-5.6-terra", "gpt-5.6-terra", "Balanced model for everyday coding, debugging, and general work.", ["low", "medium", "high", "xhigh", "ultra"], ["low", "medium", "high", "xhigh", "max", "ultra"], "medium"),
         new("gpt-5.6-luna", "gpt-5.6-luna", "Fast, lightweight model for shorter coding tasks and quick edits.", ["low", "medium", "high", "xhigh"], ["low", "medium", "high", "xhigh", "max"], "medium"),
         new("gpt-5.5", "gpt-5.5", "Frontier model for complex coding, research, and real-world work.", ["low", "medium", "high", "xhigh"], ["low", "medium", "high", "xhigh"], "medium"),
@@ -38,6 +40,7 @@ internal static class ModelCatalog
 
     public static string ReasoningDescription(string? effort) => effort switch
     {
+        "none" => "Fastest responses for simple, direct tasks without additional reasoning time.",
         "low" => "Faster responses with lighter reasoning for straightforward tasks.",
         "medium" => "Recommended balance of speed and reasoning depth for most work.",
         "high" => "More careful reasoning for complex code changes and troubleshooting.",

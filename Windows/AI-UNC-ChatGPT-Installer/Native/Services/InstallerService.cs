@@ -12,8 +12,8 @@ namespace AIUNCChatGPTInstaller.Services;
 
 internal sealed partial class InstallerService : IDisposable
 {
-    public const string InstallerVersion = "2026.07.29.6";
-    public const string InstallerBuildDate = "2026-07-29";
+    public const string InstallerVersion = "2026.10.22.1";
+    public const string InstallerBuildDate = "2026-10-22";
     public const string EndpointBaseUrl = "https://azureaiapi.cloud.unc.edu/openai/v1";
     public const string ResponsesUrl = EndpointBaseUrl + "/responses";
     public const string ChatGPTDownloadUrl = "https://chatgpt.com/download/";
@@ -712,8 +712,6 @@ internal sealed partial class InstallerService : IDisposable
                 }
             }
 
-            JsonObject? template = current.GetValueOrDefault("gpt-5.5") ??
-                                   models.OfType<JsonObject>().FirstOrDefault();
             var filtered = new JsonArray();
             foreach (var option in ModelCatalog.Options)
             {
@@ -723,7 +721,7 @@ internal sealed partial class InstallerService : IDisposable
                 {
                     model = source.DeepClone().AsObject();
                 }
-                else if (option.Deployment.StartsWith("gpt-5.6-", StringComparison.Ordinal) && template is not null)
+                else if (FindCatalogTemplate(option.Deployment, current, models) is { } template)
                 {
                     model = template.DeepClone().AsObject();
                     synthesized = true;
@@ -798,6 +796,33 @@ internal sealed partial class InstallerService : IDisposable
         {
             FileUtilities.TryDeleteDirectory(temporaryHome);
         }
+    }
+
+    private static JsonObject? FindCatalogTemplate(
+        string deployment,
+        IReadOnlyDictionary<string, JsonObject> current,
+        JsonArray models)
+    {
+        string[] candidateDeployments = deployment switch
+        {
+            "gpt-6.1-sol" => ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.5"],
+            "gpt-6-luna" => ["gpt-5.6-luna", "gpt-6-astra", "gpt-5.6-sol"],
+            _ when deployment.StartsWith("gpt-5.6-", StringComparison.Ordinal) =>
+                ["gpt-5.6-sol", "gpt-5.5"],
+            _ => []
+        };
+
+        foreach (var candidate in candidateDeployments)
+        {
+            if (current.TryGetValue(candidate, out var template))
+            {
+                return template;
+            }
+        }
+
+        return candidateDeployments.Length > 0
+            ? models.OfType<JsonObject>().FirstOrDefault()
+            : null;
     }
 
     private static void SetReasoningProperties(JsonObject model, ModelOption option)
