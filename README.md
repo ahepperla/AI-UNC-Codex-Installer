@@ -88,18 +88,13 @@ The Mac app has a plaintext fallback for support cases, but it should not be the
 
 ## Distribution
 
-Do not commit local builds, zips, or DerivedData output to the repository. Use GitHub Releases or an internal UNC channel for packaged test builds.
-
 Current local package names:
 
 ```text
 AI-UNC-ChatGPT-Installer-AppleSilicon.zip
-AI-UNC-ChatGPT-Installer-Windows.exe
 AI-UNC-ChatGPT-Installer-Windows.zip
 AI-UNC-ChatGPT-Installer-Linux-HPC.zip
 ```
-
-For wider Mac distribution, sign and notarize the app with an Apple Developer ID certificate. The app should not be sandboxed unless it is redesigned, because setup writes to the Codex home directory, LaunchAgents, and Keychain.
 
 ## Platform Docs
 
